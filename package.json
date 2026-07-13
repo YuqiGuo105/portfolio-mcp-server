@@ -1,0 +1,19 @@
+{
+  "name": "portfolio-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP Server for Yuqi's Portfolio — public read-only tools for ChatGPT, Copilot, and Claude",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.4.3"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "private": true
+}

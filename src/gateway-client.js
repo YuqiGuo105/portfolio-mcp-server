@@ -7,19 +7,27 @@ const GATEWAY_URL = (process.env.MCP_GATEWAY_URL || 'https://portfolio-mcp-gatew
 const GATEWAY_TOKEN = process.env.MCP_GATEWAY_INTERNAL_TOKEN || '';
 const TIMEOUT_MS = Number(process.env.GATEWAY_TIMEOUT_MS) || 10_000;
 
-export async function invokeGatewayTool(toolName, args) {
+export async function invokeGatewayTool(toolName, args, context) {
   const url = `${GATEWAY_URL}/api/tools/${encodeURIComponent(toolName)}/invoke`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${GATEWAY_TOKEN}`,
+    'X-Actor': context?.actor || 'mcp-server:public',
+  };
+  if (context?.role) {
+    headers['X-Role'] = context.role;
+  }
+  if (context?.idempotencyKey) {
+    headers['Idempotency-Key'] = context.idempotencyKey;
+  }
+
   try {
     const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GATEWAY_TOKEN}`,
-        'X-Actor': 'mcp-server:public',
-      },
+      headers,
       body: JSON.stringify(args),
       signal: controller.signal,
     });

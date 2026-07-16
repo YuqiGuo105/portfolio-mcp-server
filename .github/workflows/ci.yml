@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Syntax check all source files
+        run: |
+          for f in src/*.js; do
+            node --check "$f"
+          done
+
+      - name: Verify server starts
+        run: |
+          timeout 5 node src/index.js &
+          sleep 2
+          curl -sf http://localhost:8080/health | grep -q '"ok"'
+          kill %1 || true
+        env:
+          MCP_GATEWAY_URL: http://localhost:9999
+          MCP_GATEWAY_INTERNAL_TOKEN: test-token
+          SUPABASE_JWT_SECRET: test-secret
+          ADMIN_ALLOWED_EMAILS: test@test.com

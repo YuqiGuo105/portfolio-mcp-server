@@ -18,6 +18,7 @@ env:
   ARTIFACT_REPO: portfolio
   IMAGE_NAME: portfolio-mcp-server
   SERVICE_NAME: portfolio-mcp-server
+  RUNTIME_SA_EMAIL: admin-platform-runtime@portfolio-notify-prod.iam.gserviceaccount.com
 
 jobs:
   deploy:
@@ -60,6 +61,7 @@ jobs:
             --image="${IMAGE}" \
             --region="${REGION}" \
             --project="${PROJECT_ID}" \
+            --service-account="${RUNTIME_SA_EMAIL}" \
             --allow-unauthenticated \
             --port=8080 \
             --min-instances=0 \

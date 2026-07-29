@@ -12,6 +12,10 @@ permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: deploy-portfolio-mcp-server
+  cancel-in-progress: false
+
 env:
   PROJECT_ID: portfolio-notify-prod
   REGION: us-central1
@@ -19,6 +23,7 @@ env:
   IMAGE_NAME: portfolio-mcp-server
   SERVICE_NAME: portfolio-mcp-server
   RUNTIME_SA_EMAIL: admin-platform-runtime@portfolio-notify-prod.iam.gserviceaccount.com
+  DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
   deploy:
@@ -28,12 +33,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout CI-approved commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
 
       - name: Compute image tag
         id: tag
         run: |
-          TAG="sha-$(echo "${GITHUB_SHA}" | cut -c1-7)"
+          TAG="sha-$(echo "${DEPLOY_SHA}" | cut -c1-7)"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Authenticate to Google Cloud (Workload Identity Federation)

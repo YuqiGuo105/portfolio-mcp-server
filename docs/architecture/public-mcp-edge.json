@@ -1,0 +1,72 @@
+{
+  "title": "External MCP Integration Subsystem",
+  "subtitle": "Stateless Streamable HTTP · two trust levels · typed tools · staged writes · sanitized results",
+  "summary": "MCP TRANSPORT · EDGE POLICY · TOOL CONTROL · DOMAIN ADAPTERS",
+  "description": "Production MCP edge for OpenAI and Gemini clients, with public/admin boundaries, tool schemas, confirmation, idempotency, downstream adapters, audit, and bounded responses.",
+  "theme": "light",
+  "validateNoOverlap": true,
+  "width": 2420,
+  "height": 1020,
+  "lanes": [
+    { "id": "transport", "title": "01 · MCP TRANSPORT", "subtitle": "Streamable HTTP · JSON-RPC · stateless request handling", "x": 140, "y": 115, "w": 450, "h": 610, "accent": "blue", "fillOpacity": 0.04, "strokeOpacity": 0.3 },
+    { "id": "policy", "title": "02 · EDGE POLICY", "subtitle": "trust level · auth · request bounds · fail closed", "x": 610, "y": 115, "w": 380, "h": 610, "accent": "green", "fillOpacity": 0.04, "strokeOpacity": 0.3 },
+    { "id": "tools", "title": "03 · TOOL CONTROL", "subtitle": "versioned schema · annotations · staged writes", "x": 1010, "y": 115, "w": 520, "h": 610, "accent": "purple", "fillOpacity": 0.04, "strokeOpacity": 0.3 },
+    { "id": "domains", "title": "04 · DOMAIN ADAPTERS", "subtitle": "server credentials · timeout · domain-owned authorization", "x": 1550, "y": 115, "w": 820, "h": 610, "accent": "orange", "fillOpacity": 0.04, "strokeOpacity": 0.3 },
+    { "id": "audit", "title": "05 · AUDIT + OPERATIONAL STATE", "subtitle": "redaction · idempotency · outcome · bounded retention", "x": 610, "y": 770, "w": 1760, "h": 190, "accent": "red", "fillOpacity": 0.03, "strokeOpacity": 0.28 }
+  ],
+  "nodes": [
+    {
+      "id": "clients", "shape": "actor", "icon": "model", "title": "AI MCP Clients", "meta": "OPENAI · GEMINI", "accent": "purple", "x": 15, "y": 220, "w": 115, "h": 112,
+      "brands": [{ "brand": "openai", "brandColor": "#111827", "accent": "slate" }, { "brand": "googlegemini", "brandColor": "#4285f4", "accent": "blue" }]
+    },
+    { "id": "operator", "shape": "actor", "icon": "user", "title": "Operator", "meta": "SIGNED-IN ADMIN", "accent": "orange", "x": 20, "y": 520, "w": 105, "h": 112 },
+    {
+      "id": "edge", "shape": "cluster", "brand": "modelcontextprotocol", "brandColor": "#7255a5", "icon": "web",
+      "title": "MCP Edge", "meta": "CLOUD RUN · STREAMABLE HTTP", "accent": "blue", "x": 180, "y": 210, "w": 370, "h": 365,
+      "members": ["POST /mcp", "POST /mcp/admin", "JSON-RPC Decode", "Stateless Session", "Request Correlation", "Response Encode"],
+      "resources": [{ "brand": "modelcontextprotocol", "brandColor": "#7255a5", "icon": "code", "title": "Protocol", "meta": "MCP · JSON-RPC", "accent": "purple" }]
+    },
+    {
+      "id": "policy", "shape": "cluster", "icon": "shield", "title": "Auth + Edge Policy", "meta": "FAIL CLOSED", "accent": "green", "x": 650, "y": 190, "w": 300, "h": 310,
+      "members": ["Public Allowlist", "Admin JWT", "Payload Bounds", "Rate Limit*"],
+      "resources": [{ "brand": "redis", "brandColor": "#d82c20", "icon": "cache", "title": "Rate State", "meta": "VALKEY · TARGET", "accent": "red" }]
+    },
+    { "id": "sanitizer", "icon": "shield", "title": "Response Sanitizer", "meta": "FILTER · TRUNCATE · LINK", "accent": "green", "x": 1990, "y": 470, "w": 280, "h": 145, "details": ["first-party fields + canonical URLs", "remove secrets and private IDs"] },
+    {
+      "id": "registry", "shape": "cluster", "brand": "modelcontextprotocol", "brandColor": "#7255a5", "icon": "tool",
+      "title": "Tool Registry", "meta": "SCHEMA · RISK · ANNOTATIONS", "accent": "purple", "x": 1050, "y": 155, "w": 440, "h": 280,
+      "members": ["Public Read Tools", "Admin Read Tools", "Admin Write Tools", "Input Validation"],
+      "resources": [{ "brand": "modelcontextprotocol", "brandColor": "#7255a5", "icon": "file", "title": "Versioned Catalog", "meta": "JSON SCHEMA", "accent": "purple" }]
+    },
+    {
+      "id": "confirm", "shape": "cluster", "icon": "lock", "title": "Confirmation Gate", "meta": "PREPARE → CONFIRM → APPLY", "accent": "orange", "x": 1050, "y": 485, "w": 440, "h": 190,
+      "members": ["Diff Preview", "Expiry + Actor", "Single-use Apply", "Idempotency Key"]
+    },
+    {
+      "id": "adapters", "shape": "cluster", "brand": "springboot", "brandColor": "#6db33f", "icon": "workflow",
+      "title": "Downstream Adapters", "meta": "INTERNAL TOKEN · TIMEOUT", "accent": "orange", "x": 1600, "y": 190, "w": 360, "h": 340,
+      "members": ["Content Adapter", "Analytics Adapter", "Notification Adapter", "Admin Adapter", "Error Mapping", "Redacted Audit"]
+    },
+    { "id": "domain-api", "brand": "springboot", "brandColor": "#6db33f", "icon": "server", "title": "Portfolio Domain APIs", "meta": "SERVICE-OWNED AUTHORIZATION", "accent": "green", "x": 2000, "y": 220, "w": 280, "h": 180, "details": ["content · analytics", "notification · operations"] },
+    { "id": "result", "shape": "actor", "icon": "code", "title": "MCP Result", "meta": "TYPED · SANITIZED", "accent": "blue", "x": 2290, "y": 490, "w": 105, "h": 112 },
+    { "id": "pending", "shape": "cache", "brand": "redis", "brandColor": "#d82c20", "icon": "cache", "title": "Pending + Idempotency", "meta": "VALKEY · TTL · SETNX", "accent": "red", "x": 1080, "y": 820, "w": 370, "h": 100 },
+    { "id": "audit-store", "shape": "database", "brand": "postgresql", "brandColor": "#336791", "icon": "database", "title": "Audit Projection", "meta": "ACTOR · TOOL · OUTCOME", "accent": "blue", "x": 1600, "y": 810, "w": 350, "h": 115, "details": ["redacted payload + idempotency key"] },
+    { "id": "ops", "icon": "chart", "title": "Operations View", "meta": "LATENCY · ERROR · USAGE", "accent": "orange", "x": 2020, "y": 810, "w": 300, "h": 115, "details": ["bounded operational retention"] }
+  ],
+  "callouts": [{ "x": 650, "y": 540, "w": 300, "h": 90, "accent": "red", "icon": "clock", "title": "Target control", "lines": ["Redis edge rate limiting", "is not deployed yet."] }],
+  "edges": [
+    { "from": "clients", "to": "edge", "fromAt": { "x": 130, "y": 260 }, "toAt": { "x": 180, "y": 300 }, "kind": "primary", "label": "public MCP", "routing": "smooth" },
+    { "from": "operator", "to": "edge", "fromAt": { "x": 125, "y": 575 }, "toAt": { "x": 180, "y": 500 }, "kind": "primary", "label": "admin MCP + JWT", "routing": "smooth" },
+    { "from": "edge", "to": "policy", "kind": "primary", "label": "request context", "routing": "smooth" },
+    { "from": "policy", "to": "registry", "fromAt": { "x": 950, "y": 300 }, "toAt": { "x": 1050, "y": 280 }, "kind": "primary", "label": "allowed invocation", "via": [{ "x": 1000, "y": 290 }], "routing": "smooth" },
+    { "from": "registry", "to": "adapters", "fromAt": { "x": 1490, "y": 255 }, "toAt": { "x": 1600, "y": 260 }, "kind": "sync", "label": "read-only tool", "via": [{ "x": 1545, "y": 245 }], "routing": "smooth" },
+    { "from": "registry", "to": "confirm", "fromAt": { "x": 1270, "y": 435 }, "toAt": { "x": 1270, "y": 485 }, "kind": "sync", "label": "write intent", "via": [{ "x": 1310, "y": 460 }], "routing": "smooth" },
+    { "from": "confirm", "to": "adapters", "fromAt": { "x": 1490, "y": 570 }, "toAt": { "x": 1600, "y": 410 }, "kind": "sync", "label": "confirmed command", "via": [{ "x": 1550, "y": 520 }], "routing": "smooth" },
+    { "from": "adapters", "to": "domain-api", "fromAt": { "x": 1960, "y": 300 }, "toAt": { "x": 2000, "y": 285 }, "kind": "primary", "label": "typed HTTP", "routing": "smooth" },
+    { "from": "domain-api", "to": "sanitizer", "fromSide": "bottom", "toSide": "top", "kind": "return", "label": "domain result", "via": [{ "x": 2180, "y": 440 }], "routing": "smooth" },
+    { "from": "sanitizer", "to": "result", "kind": "return", "label": "safe MCP result", "via": [{ "x": 2280, "y": 530 }], "routing": "smooth" },
+    { "from": "confirm", "to": "pending", "fromSide": "bottom", "toSide": "top", "kind": "data", "label": "TTL state", "via": [{ "x": 1320, "y": 740 }], "routing": "smooth" },
+    { "from": "adapters", "to": "audit-store", "fromSide": "bottom", "toSide": "top", "kind": "data", "label": "redacted outcome", "via": [{ "x": 1810, "y": 700 }], "routing": "smooth" },
+    { "from": "audit-store", "to": "ops", "kind": "data", "label": "operational projection", "via": [{ "x": 1980, "y": 855 }], "routing": "smooth" }
+  ]
+}

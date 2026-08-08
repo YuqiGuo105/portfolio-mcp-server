@@ -4,21 +4,35 @@ A public, read-only [Model Context Protocol (MCP)](https://modelcontextprotocol.
 
 The server exposes a stateless Streamable HTTP endpoint designed for clients such as ChatGPT, Claude, GitHub Copilot, and Cursor. It delegates content lookups to the portfolio platform's internal MCP gateway and sanitizes every response before returning it to the client.
 
-## How it works
+## System Design
 
-```mermaid
-flowchart LR
-    CLIENT["MCP client<br/>ChatGPT · Claude · Copilot · Cursor"]
-    SERVER["Portfolio MCP Server<br/>Streamable HTTP · stateless"]
-    GATEWAY["Portfolio MCP Gateway<br/>internal tool invocation"]
-    CONTENT["Portfolio content<br/>projects · articles · profile"]
+The edge view makes the public/admin trust boundary explicit and shows policy
+enforcement, versioned tool discovery, confirmation-gated writes, typed domain
+adapters, response sanitization, and auditable operational state.
 
-    CLIENT -->|"POST /mcp"| SERVER
-    SERVER -->|"authenticated internal request"| GATEWAY
-    GATEWAY --> CONTENT
-    CONTENT --> GATEWAY --> SERVER
-    SERVER -->|"sanitized public fields"| CLIENT
-```
+<img src="docs/architecture/public-mcp-edge.svg" alt="Public Portfolio MCP edge architecture" width="100%" />
+
+> **Maintain this diagram:** edit [`docs/architecture/public-mcp-edge.json`](docs/architecture/public-mcp-edge.json), then run `node scripts/render-architecture-diagram.mjs docs/architecture/public-mcp-edge.json`.
+
+## Production Operating Model
+
+This service is the **public MCP edge**, not the privileged admin tool runner.
+It exposes a stable Streamable HTTP endpoint (`/mcp`) for external clients and
+forwards only safe read operations to the internal gateway.
+
+Production boundaries:
+
+| Boundary | Decision |
+|---|---|
+| Public clients | ChatGPT, Copilot, Claude, Cursor and similar clients use this server only |
+| Tool scope | Public tools are read-only and return sanitized project/article/profile fields |
+| Privileged writes | Admin write tools run through the authenticated Portfolio admin console and internal MCP gateway, not this public server |
+| Response safety | Internal IDs, audit data, raw HTML, private delivery state, and long payloads are omitted or truncated |
+| Failure mode | Gateway timeouts fail closed with concise MCP errors; no partial private payload is returned |
+
+For admin automation, use `https://www.yuqi.site/admin/agent`. That console
+auto-runs read-only operations and stages write operations behind explicit
+confirmation with the signed-in Supabase admin identity.
 
 ## Tools
 

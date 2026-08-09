@@ -81,7 +81,7 @@ jobs:
             --timeout=60 \
             --concurrency=80 \
             --set-env-vars="NODE_ENV=production,MCP_GATEWAY_URL=${{ vars.MCP_GATEWAY_URL }},SITE_URL=${{ vars.SITE_URL }},MAX_CONTENT_LENGTH=${{ vars.MAX_CONTENT_LENGTH }},ADMIN_ALLOWED_EMAILS=${{ vars.ADMIN_ALLOWED_EMAILS }},ADMIN_SERVICE_URL=${{ vars.ADMIN_SERVICE_URL || 'https://portfolio-admin-service-702193211434.us-central1.run.app' }}" \
-            --update-secrets="MCP_GATEWAY_INTERNAL_TOKEN=MCP_GATEWAY_INTERNAL_TOKEN:latest,SUPABASE_JWT_SECRET=SUPABASE_JWT_SECRET:latest,ADMIN_SERVICE_INTERNAL_TOKEN=ADMIN_SECRET:latest"
+            --update-secrets="MCP_GATEWAY_INTERNAL_TOKEN=MCP_GATEWAY_INTERNAL_TOKEN:latest,SUPABASE_JWT_SECRET=SUPABASE_JWT_SECRET:latest,ADMIN_SERVICE_INTERNAL_TOKEN=INTERNAL_API_TOKEN:latest"
 
       - name: Smoke test
         run: |

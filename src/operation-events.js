@@ -39,11 +39,11 @@ export async function recordToolCall({ context, toolName, status, durationMs, er
     attributes: errorCode ? { toolName, errorCode } : { toolName },
   };
   try {
-    await fetch(`${ADMIN_SERVICE_URL}/api/admin/operations/timeline/events`, {
+    await fetch(`${ADMIN_SERVICE_URL}/api/internal/operations/events`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Admin-Secret': ADMIN_SERVICE_TOKEN,
+        'X-Internal-Token': ADMIN_SERVICE_TOKEN,
         'X-Correlation-Id': context.correlationId,
         traceparent: `00-${context.traceId}-${randomUUID().replaceAll('-', '').slice(0, 16)}-01`,
       },

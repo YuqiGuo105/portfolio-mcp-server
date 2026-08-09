@@ -22,6 +22,7 @@ import { adminTools } from './admin-tools.js';
 import { verifyAdminAuth, AuthError } from './admin-auth.js';
 import { z } from 'zod';
 import http from 'node:http';
+import { operationContext, recordToolCall } from './operation-events.js';
 
 const PORT = Number(process.env.PORT) || 8080;
 
@@ -29,7 +30,7 @@ const PORT = Number(process.env.PORT) || 8080;
 
 // ── Factory: create a fresh MCP server per request (stateless) ───────────
 
-function createServer() {
+function createServer(requestContext) {
   const srv = new McpServer({
     name: 'yuqi-portfolio',
     version: '1.0.0',
@@ -42,12 +43,15 @@ function createServer() {
       tool.description,
       tool.zodSchema,
       async (args) => {
+        const startedAt = Date.now();
         try {
           const result = await tool.handler(args);
+          await recordToolCall({ context: requestContext, toolName: tool.name, status: 'completed', durationMs: Date.now() - startedAt });
           return {
             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
           };
         } catch (err) {
+          await recordToolCall({ context: requestContext, toolName: tool.name, status: 'failed', durationMs: Date.now() - startedAt, errorCode: err.name || 'ToolError' });
           return {
             content: [{ type: 'text', text: JSON.stringify({ error: err.message }) }],
             isError: true,
@@ -63,6 +67,7 @@ function createServer() {
 // ── Factory: admin MCP server (authenticated, includes write tools) ──────
 
 function createAdminServer(authContext) {
+  const requestContext = authContext.operationContext;
   const srv = new McpServer({
     name: 'yuqi-portfolio-admin',
     version: '1.0.0',
@@ -76,12 +81,15 @@ function createAdminServer(authContext) {
       tool.description,
       tool.zodSchema,
       async (args) => {
+        const startedAt = Date.now();
         try {
           const result = await tool.handler(args, authContext);
+          await recordToolCall({ context: requestContext, toolName: tool.name, status: 'completed', durationMs: Date.now() - startedAt });
           return {
             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
           };
         } catch (err) {
+          await recordToolCall({ context: requestContext, toolName: tool.name, status: 'failed', durationMs: Date.now() - startedAt, errorCode: err.name || 'ToolError' });
           return {
             content: [{ type: 'text', text: JSON.stringify({ error: err.message }) }],
             isError: true,
@@ -98,12 +106,15 @@ function createAdminServer(authContext) {
       tool.description,
       tool.zodSchema,
       async (args) => {
+        const startedAt = Date.now();
         try {
           const result = await tool.handler(args, authContext);
+          await recordToolCall({ context: requestContext, toolName: tool.name, status: 'completed', durationMs: Date.now() - startedAt });
           return {
             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
           };
         } catch (err) {
+          await recordToolCall({ context: requestContext, toolName: tool.name, status: 'failed', durationMs: Date.now() - startedAt, errorCode: err.name || 'ToolError' });
           return {
             content: [{ type: 'text', text: JSON.stringify({ error: err.message }) }],
             isError: true,
@@ -131,7 +142,7 @@ const httpServer = http.createServer(async (req, res) => {
   // MCP endpoint
   if (url.pathname === '/mcp') {
     try {
-      const srv = createServer();
+      const srv = createServer(operationContext(req));
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // Stateless
       });
@@ -152,6 +163,7 @@ const httpServer = http.createServer(async (req, res) => {
     try {
       const authHeader = req.headers['authorization'] || null;
       const authContext = await verifyAdminAuth(authHeader);
+      authContext.operationContext = operationContext(req, `mcp-server:admin:${authContext.email || 'unknown'}`);
       const srv = createAdminServer(authContext);
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // Stateless

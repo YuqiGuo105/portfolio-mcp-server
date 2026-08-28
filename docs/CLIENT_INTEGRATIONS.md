@@ -87,16 +87,28 @@ Official reference: [Gemini CLI MCP servers](https://geminicli.com/docs/tools/mc
 
 ## Administrator tools
 
-The privileged endpoint is `https://www.yuqi.site/mcp/admin`, but it is not
-included in any public plugin or example. It requires a valid Supabase access
-token, managed administrator status, server-side role resolution, and explicit
-confirmation for risky writes.
+The privileged endpoint is `https://www.yuqi.site/mcp/admin`. It uses OAuth 2.1
+with PKCE and Supabase Auth discovery, so compatible clients open the existing
+yuqi.site administrator login and a dedicated consent screen. OAuth establishes
+identity only; every request still resolves the managed administrator role and
+permissions through the admin service. Risky writes remain confirmation-gated.
 
-For local, short-lived testing, clients that support environment-backed bearer
-tokens can point a separate server entry at `/mcp/admin`. Do not commit the
-token. Production multi-client administrator access should use OAuth 2.1 with
-PKCE, short-lived scoped tokens, revocation, and auditable consent instead of a
-copied JWT.
+Add and authorize it in Codex without copying a bearer token:
+
+```sh
+codex mcp add yuqi-portfolio-admin \
+  --url https://www.yuqi.site/mcp/admin \
+  --oauth-client-registration dcr \
+  --oauth-resource https://www.yuqi.site/mcp/admin
+codex mcp login yuqi-portfolio-admin \
+  --oauth-client-registration dcr \
+  --scopes openid,email,profile
+```
+
+The OAuth grant uses short-lived access tokens and refresh-token rotation. The
+administrator can revoke the client grant from Supabase Auth. Do not add this
+endpoint to the public plugin: administrator installation is intentionally an
+explicit local action.
 
 ## Verification
 

@@ -80,7 +80,7 @@ jobs:
             --cpu-throttling \
             --timeout=60 \
             --concurrency=80 \
-            --set-env-vars="NODE_ENV=production,MCP_GATEWAY_URL=${{ vars.MCP_GATEWAY_URL }},SITE_URL=${{ vars.SITE_URL }},MAX_CONTENT_LENGTH=${{ vars.MAX_CONTENT_LENGTH }},ADMIN_ALLOWED_EMAILS=${{ vars.ADMIN_ALLOWED_EMAILS }},ADMIN_SERVICE_URL=${{ vars.ADMIN_SERVICE_URL || 'https://portfolio-admin-service-702193211434.us-central1.run.app' }}" \
+            --set-env-vars="NODE_ENV=production,MCP_GATEWAY_URL=${{ vars.MCP_GATEWAY_URL }},SITE_URL=${{ vars.SITE_URL }},MCP_SERVER_PUBLIC_URL=https://portfolio-mcp-server-702193211434.us-central1.run.app,MAX_CONTENT_LENGTH=${{ vars.MAX_CONTENT_LENGTH }},ADMIN_ALLOWED_EMAILS=${{ vars.ADMIN_ALLOWED_EMAILS }},ADMIN_SERVICE_URL=${{ vars.ADMIN_SERVICE_URL || 'https://portfolio-admin-service-702193211434.us-central1.run.app' }},SUPABASE_AUTH_ISSUER=https://iyvhmpdfrnznxgyvvkvx.supabase.co/auth/v1" \
             --update-secrets="MCP_GATEWAY_INTERNAL_TOKEN=MCP_GATEWAY_INTERNAL_TOKEN:latest,SUPABASE_JWT_SECRET=SUPABASE_JWT_SECRET:latest,ADMIN_SERVICE_INTERNAL_TOKEN=INTERNAL_API_TOKEN:latest"
 
       - name: Smoke test
@@ -89,8 +89,9 @@ jobs:
             --region="${REGION}" --project="${PROJECT_ID}" \
             --format='value(status.url)')
           for i in $(seq 1 20); do
-            if curl -sf "${URL}/health" | grep -q '"ok"'; then
-              echo "Health check passed: ${URL}"
+            if curl -sf "${URL}/health" | grep -q '"ok"' && \
+               curl -sf "${URL}/.well-known/oauth-protected-resource/mcp/admin" | grep -q 'authorization_servers'; then
+              echo "Health and OAuth discovery checks passed: ${URL}"
               exit 0
             fi
             sleep 3

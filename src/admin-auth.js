@@ -3,11 +3,18 @@
  * Verifies Supabase JWT from Authorization header and checks admin role.
  *
  * Env:
- *   SUPABASE_JWT_SECRET       – HS256 secret for verifying Supabase JWTs
+ *   SUPABASE_AUTH_ISSUER      – Supabase Auth issuer for JWKS verification
+ *   SUPABASE_JWT_SECRET       – legacy HS256 verification fallback
  *   ADMIN_ALLOWED_EMAILS      – comma-separated list of allowed admin emails
  */
 
-import { jwtVerify } from 'jose';
+import {
+  createRemoteJWKSet,
+  decodeProtectedHeader,
+  jwtVerify,
+} from 'jose';
+
+const jwksByIssuer = new Map();
 
 /**
  * Verify the Supabase JWT and return decoded claims if the user is an admin.
@@ -17,7 +24,6 @@ import { jwtVerify } from 'jose';
  * @returns {{ email: string, sub: string, role: string }}
  */
 export async function verifyAdminAuth(authorizationHeader) {
-  const jwtSecret = process.env.SUPABASE_JWT_SECRET || '';
   const adminEmails = (process.env.ADMIN_ALLOWED_EMAILS || '')
     .split(',')
     .map(e => e.trim().toLowerCase())
@@ -25,22 +31,8 @@ export async function verifyAdminAuth(authorizationHeader) {
   if (!authorizationHeader || !authorizationHeader.startsWith('Bearer ')) {
     throw new AuthError(401, 'Missing or invalid Authorization header');
   }
-  if (!jwtSecret) {
-    throw new AuthError(500, 'SUPABASE_JWT_SECRET not configured');
-  }
-
   const token = authorizationHeader.slice(7);
-  const secret = new TextEncoder().encode(jwtSecret);
-
-  let payload;
-  try {
-    const result = await jwtVerify(token, secret, {
-      algorithms: ['HS256'],
-    });
-    payload = result.payload;
-  } catch (err) {
-    throw new AuthError(401, 'Invalid or expired token: ' + err.message);
-  }
+  const payload = await verifySupabaseToken(token);
 
   const email = (payload.email || '').toLowerCase();
   const managedPrincipal = await resolveManagedPrincipal(authorizationHeader);
@@ -75,6 +67,54 @@ export async function verifyAdminAuth(authorizationHeader) {
     authSource: 'environment_fallback',
     accessToken: token,
   };
+}
+
+async function verifySupabaseToken(token) {
+  const issuer = String(process.env.SUPABASE_AUTH_ISSUER || '').replace(/\/+$/, '');
+  const jwtSecret = process.env.SUPABASE_JWT_SECRET || '';
+
+  let algorithm;
+  try {
+    algorithm = decodeProtectedHeader(token).alg;
+  } catch {
+    throw new AuthError(401, 'Invalid access token');
+  }
+
+  try {
+    if (algorithm === 'HS256') {
+      if (!jwtSecret) {
+        throw new AuthError(500, 'SUPABASE_JWT_SECRET not configured');
+      }
+      const result = await jwtVerify(token, new TextEncoder().encode(jwtSecret), {
+        algorithms: ['HS256'],
+        ...(issuer ? { issuer } : {}),
+        audience: 'authenticated',
+      });
+      return result.payload;
+    }
+
+    if (!issuer) {
+      throw new AuthError(500, 'SUPABASE_AUTH_ISSUER not configured');
+    }
+    if (!['RS256', 'ES256'].includes(algorithm)) {
+      throw new AuthError(401, 'Unsupported access token algorithm');
+    }
+
+    let jwks = jwksByIssuer.get(issuer);
+    if (!jwks) {
+      jwks = createRemoteJWKSet(new URL(`${issuer}/.well-known/jwks.json`));
+      jwksByIssuer.set(issuer, jwks);
+    }
+    const result = await jwtVerify(token, jwks, {
+      algorithms: ['RS256', 'ES256'],
+      issuer,
+      audience: 'authenticated',
+    });
+    return result.payload;
+  } catch (error) {
+    if (error instanceof AuthError) throw error;
+    throw new AuthError(401, 'Invalid or expired access token');
+  }
 }
 
 async function resolveManagedPrincipal(authorizationHeader) {

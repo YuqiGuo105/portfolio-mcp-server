@@ -11,11 +11,13 @@ async function tokenFor(email) {
     .setSubject('user-123')
     .setIssuedAt()
     .setExpirationTime('5m')
+    .setAudience('authenticated')
     .sign(new TextEncoder().encode(secret));
 }
 
 test('uses managed admin role and owner policy from admin-service', async (t) => {
   process.env.SUPABASE_JWT_SECRET = secret;
+  delete process.env.SUPABASE_AUTH_ISSUER;
   process.env.ADMIN_SERVICE_URL = 'https://admin.test';
   const originalFetch = globalThis.fetch;
   t.after(() => { globalThis.fetch = originalFetch; });
@@ -40,6 +42,7 @@ test('uses managed admin role and owner policy from admin-service', async (t) =>
 
 test('fails closed when managed authorization is unavailable', async (t) => {
   process.env.SUPABASE_JWT_SECRET = secret;
+  delete process.env.SUPABASE_AUTH_ISSUER;
   process.env.ADMIN_SERVICE_URL = 'https://admin.test';
   const originalFetch = globalThis.fetch;
   t.after(() => { globalThis.fetch = originalFetch; });

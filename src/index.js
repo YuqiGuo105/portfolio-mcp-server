@@ -32,6 +32,10 @@ import {
 } from './catalog-client.js';
 import { invocationForTool, invokeGatewayTool } from './gateway-client.js';
 import { invokeOwnerAdminTool, isOwnerAdminTool } from './owner-admin-client.js';
+import {
+  bearerChallenge,
+  protectedResourceMetadata,
+} from './oauth-resource.js';
 
 const PORT = Number(process.env.PORT) || 8080;
 
@@ -224,6 +228,18 @@ export function createHttpServer() {
     return;
   }
 
+  if (
+    url.pathname === '/.well-known/oauth-protected-resource' ||
+    url.pathname === '/.well-known/oauth-protected-resource/mcp/admin'
+  ) {
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'public, max-age=300',
+    });
+    res.end(JSON.stringify(protectedResourceMetadata()));
+    return;
+  }
+
   // MCP endpoint
   if (url.pathname === '/mcp') {
     try {
@@ -257,7 +273,11 @@ export function createHttpServer() {
       await transport.handleRequest(req, res);
     } catch (err) {
       if (err instanceof AuthError) {
-        res.writeHead(err.statusCode, { 'Content-Type': 'application/json' });
+        const headers = { 'Content-Type': 'application/json' };
+        if (err.statusCode === 401) {
+          headers['WWW-Authenticate'] = bearerChallenge();
+        }
+        res.writeHead(err.statusCode, headers);
         res.end(JSON.stringify({ error: err.message }));
       } else {
         console.error('Admin MCP request error:', err.message);
@@ -282,7 +302,7 @@ if (isMain) {
   httpServer.listen(PORT, () => {
     console.log(`Portfolio MCP Server listening on port ${PORT}`);
     console.log(`MCP endpoint: http://localhost:${PORT}/mcp`);
-    console.log(`Admin MCP endpoint: http://localhost:${PORT}/mcp/admin (JWT required)`);
+    console.log(`Admin MCP endpoint: http://localhost:${PORT}/mcp/admin (OAuth bearer token required)`);
     console.log(`Health: http://localhost:${PORT}/health`);
     console.log(`Public tools: ${tools.map(t => t.name).join(', ')}`);
     console.log('Admin tools: canonical gateway catalog + compatibility aliases');

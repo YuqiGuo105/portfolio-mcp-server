@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "yuqi-portfolio": {
+      "type": "http",
+      "url": "https://www.yuqi.site/mcp"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "yuqi-portfolio": {
+      "httpUrl": "https://www.yuqi.site/mcp",
+      "timeout": 30000,
+      "trust": false
+    }
+  }
+}

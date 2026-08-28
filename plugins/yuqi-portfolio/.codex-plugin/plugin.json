@@ -1,0 +1,37 @@
+{
+  "name": "yuqi-portfolio",
+  "version": "1.0.0",
+  "description": "Explore Yuqi Guo's portfolio, engineering projects, articles, architecture, and public profile through MCP.",
+  "author": {
+    "name": "Yuqi Guo",
+    "url": "https://www.yuqi.site"
+  },
+  "homepage": "https://www.yuqi.site",
+  "repository": "https://github.com/YuqiGuo105/portfolio-mcp-server",
+  "keywords": [
+    "portfolio",
+    "mcp",
+    "software-engineering",
+    "system-design"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Yuqi Portfolio",
+    "shortDescription": "Projects, articles, architecture, and profile",
+    "longDescription": "A read-only MCP integration for exploring Yuqi Guo's public engineering portfolio, published writing, system architecture, and professional profile.",
+    "developerName": "Yuqi Guo",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Interactive"
+    ],
+    "websiteURL": "https://www.yuqi.site",
+    "defaultPrompt": [
+      "Show me Yuqi's strongest backend projects.",
+      "Explain the portfolio platform architecture.",
+      "Find Yuqi's writing about distributed systems."
+    ],
+    "brandColor": "#137C70"
+  }
+}

@@ -160,13 +160,37 @@ Do not expose `MCP_GATEWAY_INTERNAL_TOKEN` in client configuration or commit it 
 
 ## Connect an MCP client
 
-Configure your client with the deployed Streamable HTTP URL:
+The public endpoint is packaged as an installable Codex plugin and as portable
+configuration examples for other MCP clients:
+
+- [Codex plugin](plugins/yuqi-portfolio)
+- [Cross-platform setup guide](docs/CLIENT_INTEGRATIONS.md)
+- [Client configuration examples](docs/client-configs)
+
+The production Streamable HTTP endpoint is:
 
 ```txt
-https://your-mcp-server.example.com/mcp
+https://www.yuqi.site/mcp
 ```
 
-The exact configuration format varies by client. Choose **Streamable HTTP** as the transport when the client asks for a transport type.
+For Codex CLI, the direct installation command is:
+
+```sh
+codex mcp add yuqi-portfolio --url https://www.yuqi.site/mcp
+codex mcp list
+```
+
+To install the complete plugin from its GitHub marketplace instead:
+
+```sh
+codex plugin marketplace add YuqiGuo105/portfolio-mcp-server
+codex plugin add yuqi-portfolio@yuqi-portfolio-platform
+```
+
+The distributable plugin adds the same public server plus focused usage
+instructions. The public plugin intentionally excludes `/mcp/admin`: privileged
+tools require an authenticated administrator session and must never depend on a
+token committed to a plugin or client configuration.
 
 ## Docker
 

@@ -8,6 +8,10 @@ import { invokeGatewayTool } from './gateway-client.js';
 import { sanitizeContentItem, sanitizeContentDetail, sanitizeProfile } from './sanitize.js';
 import { z } from 'zod';
 
+const contentIdSchema = z.union([z.string(), z.number()])
+  .transform(String)
+  .describe('Content UUID or legacy numeric ID');
+
 /** Shared MCP tool annotations for all public tools. */
 const PUBLIC_ANNOTATIONS = {
   readOnlyHint: true,
@@ -41,7 +45,7 @@ export const tools = [
     name: 'get_project',
     description: 'Get detailed information about a specific portfolio project including problem statement, implementation details, technical decisions, and links.',
     zodSchema: {
-      projectId: z.number().describe('Project ID'),
+      projectId: contentIdSchema,
     },
     annotations: PUBLIC_ANNOTATIONS,
     handler: async (args) => {
@@ -57,7 +61,7 @@ export const tools = [
     name: 'get_project_architecture',
     description: 'Get the stored architecture diagram and component descriptions for a project. Returns pre-authored Mermaid diagrams and structured component definitions — never generates them.',
     zodSchema: {
-      projectId: z.number().describe('Project ID'),
+      projectId: contentIdSchema,
     },
     annotations: PUBLIC_ANNOTATIONS,
     handler: async (args) => {
@@ -65,9 +69,10 @@ export const tools = [
         sourceType: 'PROJECT',
         sourceId: args.projectId,
       });
-      if (!result) return { error: 'Project not found' };
+      const content = result?.content && typeof result.content === 'object' ? result.content : result;
+      if (!content) return { error: 'Project not found' };
       // Extract architecture sections from the project body
-      const body = result.body ?? result.content ?? '';
+      const body = content.body ?? content.content ?? '';
       const mermaidBlocks = [];
       const mermaidRegex = /```mermaid\n([\s\S]*?)```/g;
       let match;
@@ -76,10 +81,10 @@ export const tools = [
       }
       return {
         projectId: args.projectId,
-        title: result.title,
+        title: content.title,
         diagrams: mermaidBlocks,
         hasDiagrams: mermaidBlocks.length > 0,
-        url: sanitizeContentItem(result)?.url,
+        url: sanitizeContentItem(content)?.url,
         note: mermaidBlocks.length === 0
           ? 'This project does not have stored architecture diagrams.'
           : undefined,
@@ -112,7 +117,7 @@ export const tools = [
     name: 'get_article',
     description: 'Get the full content of a published article by ID. Content is truncated to a configured maximum length with a link to the full article.',
     zodSchema: {
-      articleId: z.number().describe('Article/blog post ID'),
+      articleId: contentIdSchema,
     },
     annotations: PUBLIC_ANNOTATIONS,
     handler: async (args) => {
@@ -132,7 +137,7 @@ export const tools = [
     handler: async () => {
       // Try to get CV/profile content from the content API
       const result = await invokeGatewayTool('admin.search_content', {
-        keyword: '',
+        keyword: 'Software',
         sourceType: 'EXPERIENCE',
         limit: 50,
       });

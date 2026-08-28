@@ -7,6 +7,7 @@ const SITE_URL = process.env.SITE_URL || 'https://www.yuqi.site';
 const MAX_CONTENT_LENGTH = Number(process.env.MAX_CONTENT_LENGTH) || 8000;
 
 export function sanitizeContentItem(item) {
+  item = unwrapContent(item);
   if (!item) return null;
   const safe = {
     id: item.sourceId ?? item.id,
@@ -25,6 +26,7 @@ export function sanitizeContentItem(item) {
 }
 
 export function sanitizeContentDetail(item) {
+  item = unwrapContent(item);
   if (!item) return null;
   const base = sanitizeContentItem(item);
   let body = item.body ?? item.content ?? '';
@@ -32,6 +34,11 @@ export function sanitizeContentDetail(item) {
     body = body.slice(0, MAX_CONTENT_LENGTH) + '\n\n[Content truncated. Full article at ' + base.url + ']';
   }
   return { ...base, body };
+}
+
+function unwrapContent(item) {
+  if (!item || typeof item !== 'object') return item;
+  return item.content && typeof item.content === 'object' ? item.content : item;
 }
 
 export function sanitizeProfile(data) {

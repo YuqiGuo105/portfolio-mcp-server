@@ -1,8 +1,8 @@
-# Portfolio MCP Server
+# Portfolio MCP Control Plane
 
-A public, read-only [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for [Yuqi Guo's portfolio](https://www.yuqi.site). It lets MCP-compatible clients search projects and technical articles, inspect stored project architecture, and retrieve Yuqi's public professional profile.
+A dual-boundary [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for [Yuqi Guo's portfolio](https://www.yuqi.site). Public clients receive a small, sanitized read-only surface. Authenticated administrators receive a role-scoped control plane generated from the platform's canonical internal tool catalog.
 
-The server exposes a stateless Streamable HTTP endpoint designed for clients such as ChatGPT, Claude, GitHub Copilot, and Cursor. It delegates content lookups to the portfolio platform's internal MCP gateway and sanitizes every response before returning it to the client.
+Both endpoints use stateless Streamable HTTP and support clients such as ChatGPT, Gemini, Claude, GitHub Copilot, and Cursor. Business operations remain owned by their backend services; this edge provides discovery, authentication, policy metadata, invocation and audit correlation.
 
 ## System Design
 
@@ -16,9 +16,10 @@ adapters, response sanitization, and auditable operational state.
 
 ## Production Operating Model
 
-This service is the **public MCP edge**, not the privileged admin tool runner.
-It exposes a stable Streamable HTTP endpoint (`/mcp`) for external clients and
-forwards only safe read operations to the internal gateway.
+This service exposes two deliberately separate trust boundaries:
+
+- `/mcp` is the anonymous public edge. Its six curated tools are always read-only and sanitized.
+- `/mcp/admin` is the authenticated control plane. It verifies the Supabase JWT, resolves the managed role and owner capability from admin-service, then dynamically registers only tools allowed for that principal.
 
 Production boundaries:
 
@@ -26,13 +27,13 @@ Production boundaries:
 |---|---|
 | Public clients | ChatGPT, Copilot, Claude, Cursor and similar clients use this server only |
 | Tool scope | Public tools are read-only and return sanitized project/article/profile fields |
-| Privileged writes | Admin write tools run through the authenticated Portfolio admin console and internal MCP gateway, not this public server |
+| Privileged writes | Available only on `/mcp/admin`; confirmation-gated and idempotent through the internal gateway |
 | Response safety | Internal IDs, audit data, raw HTML, private delivery state, and long payloads are omitted or truncated |
 | Failure mode | Gateway timeouts fail closed with concise MCP errors; no partial private payload is returned |
 
-For admin automation, use `https://www.yuqi.site/admin/agent`. That console
-auto-runs read-only operations and stages write operations behind explicit
-confirmation with the signed-in Supabase admin identity.
+The browser admin console and Admin MCP endpoint share the same managed identity,
+backend authorization and canonical tool catalog. A suspended or removed admin
+therefore loses both UI and MCP access without a separate permission list.
 
 ## Tools
 
@@ -46,6 +47,60 @@ confirmation with the signed-in Supabase admin identity.
 | `get_profile` | Retrieve Yuqi's public experience, skills, education, and CV link | None |
 
 All tools are read-only and non-destructive. Search results are limited to 20 items. Responses omit internal IDs, audit data, indexing state, raw HTML, and other private implementation fields; long content is truncated to a configurable maximum.
+
+## Admin Control Plane
+
+The Admin endpoint discovers its capabilities from `GET /api/tools` on the
+internal MCP gateway. It does not maintain a second hard-coded copy of backend
+operations. The current catalog covers these domains:
+
+| Domain | Representative operations |
+| --- | --- |
+| Content | Search/get, create draft, update, publish, Search/RAG reindex |
+| Recovery | Inspect failed jobs, retry jobs, replay outbox events, drain workers |
+| Analytics | Visitor summary, top pages and referrer aggregates |
+| Notifications | Subscribers, delivery status, retries, test delivery and subscription status |
+| Support | Contact owner and verification-code unsubscribe workflow |
+| Alerts | List/get rules and prepare/apply versioned rule changes |
+| Access | Owner-only admin user listing, role assignment and suspension |
+
+### Invocation workflow
+
+```text
+MCP client
+  -> Supabase JWT verification
+  -> admin-service managed role + owner lookup
+  -> canonical gateway catalog
+  -> role/owner filtered tools/list
+  -> typed MCP input validation
+  -> explicit confirmation for risky writes
+  -> idempotency key assignment
+  -> internal MCP gateway policy + adapter
+  -> owning backend service
+  -> correlated operation event
+```
+
+Write tools publish MCP annotations (`readOnlyHint`, `destructiveHint`,
+`idempotentHint`, `openWorldHint`) so supporting clients can present the right
+approval experience. An `_idempotencyKey` can be supplied by the client; the
+server generates one when omitted. A tool marked `confirmRequired` will not run
+unless `_confirmed=true`, and the internal gateway independently enforces the
+same risk gate.
+
+Admin identity management is owner-only. Those calls forward the original JWT
+to admin-service, which enforces the owner invariant and writes its own audit
+record. Operational tool events are also correlated into the platform timeline.
+
+### Adding or changing a capability
+
+1. Implement the operation in the backend service that owns the state.
+2. Add or revise its definition in the internal gateway's `tool-catalog.yaml`.
+3. Define role, risk, confirmation, dry-run support and typed parameters there.
+4. Add gateway/backend contract and policy tests.
+5. Deploy the backend and gateway. The Admin MCP catalog refreshes automatically.
+
+Only public-friendly aliases and response sanitizers belong in this repository.
+Do not duplicate domain state transitions or database access in the MCP edge.
 
 ## Run locally
 
@@ -94,6 +149,12 @@ npm run dev
 | `GATEWAY_TIMEOUT_MS` | No | `10000` | Gateway request timeout in milliseconds |
 | `SITE_URL` | No | `https://www.yuqi.site` | Base URL used to build canonical content links |
 | `MAX_CONTENT_LENGTH` | No | `8000` | Maximum returned article or project body length |
+| `SUPABASE_JWT_SECRET` | Admin endpoint | Empty | Verifies Supabase access tokens |
+| `ADMIN_SERVICE_URL` | Admin endpoint | Empty | Resolves managed role, owner capability and owner-only operations |
+| `ADMIN_ALLOWED_EMAILS` | Local fallback | Empty | Break-glass fallback used only when `ADMIN_SERVICE_URL` is absent |
+| `ADMIN_AUTH_TIMEOUT_MS` | No | `5000` | Managed authorization lookup timeout |
+| `TOOL_CATALOG_CACHE_TTL_MS` | No | `60000` | Canonical catalog cache duration |
+| `TOOL_CATALOG_MAX_STALE_MS` | No | `900000` | Bounded stale catalog fallback during a gateway cold start |
 
 Do not expose `MCP_GATEWAY_INTERNAL_TOKEN` in client configuration or commit it to source control. MCP clients connect only to this server's public `/mcp` endpoint.
 

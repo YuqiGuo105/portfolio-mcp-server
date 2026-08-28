@@ -96,7 +96,10 @@ Returns the final rule state with updated version number on success.`,
     },
     annotations: ADMIN_WRITE_ANNOTATIONS,
     handler: async (args, context) => {
-      return await invokeGatewayTool('alerts.apply_change', args, context);
+      return await invokeGatewayTool('alerts.apply_change', args, {
+        ...context,
+        idempotencyKey: args.idempotencyKey,
+      });
     },
   },
 ];

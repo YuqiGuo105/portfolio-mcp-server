@@ -1,7 +1,10 @@
 /**
  * Internal HTTP client → existing MCP Gateway (portfolio-mcp-gateway).
- * Only calls read-only, public-safe tool endpoints.
+ * Calls the canonical internal tool gateway. Public/admin exposure is decided
+ * by the MCP endpoint before this client is invoked.
  */
+
+import { randomUUID } from 'node:crypto';
 
 const GATEWAY_URL = (process.env.MCP_GATEWAY_URL || 'https://portfolio-mcp-gateway-702193211434.us-central1.run.app').replace(/\/+$/, '');
 const GATEWAY_TOKEN = process.env.MCP_GATEWAY_INTERNAL_TOKEN || '';
@@ -20,8 +23,9 @@ export async function invokeGatewayTool(toolName, args, context) {
   if (context?.role) {
     headers['X-Role'] = context.role;
   }
-  if (context?.idempotencyKey) {
-    headers['Idempotency-Key'] = context.idempotencyKey;
+  const idempotencyKey = context?.idempotencyKey || args?._idempotencyKey;
+  if (idempotencyKey) {
+    headers['Idempotency-Key'] = idempotencyKey;
   }
 
   try {
@@ -41,6 +45,22 @@ export async function invokeGatewayTool(toolName, args, context) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+export function invocationForTool(tool, rawArgs, authContext) {
+  const args = { ...(rawArgs || {}) };
+  const suppliedIdempotencyKey = args._idempotencyKey;
+  delete args._idempotencyKey;
+  return {
+    args,
+    context: {
+      actor: `mcp-server:admin:${authContext.email}`,
+      role: authContext.role,
+      idempotencyKey: tool.mode === 'WRITE'
+        ? suppliedIdempotencyKey || randomUUID()
+        : undefined,
+    },
+  };
 }
 
 function safeParseJson(text) {

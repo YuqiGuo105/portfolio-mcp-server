@@ -20,9 +20,18 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { tools } from './tools.js';
 import { adminTools } from './admin-tools.js';
 import { verifyAdminAuth, AuthError } from './admin-auth.js';
-import { z } from 'zod';
 import http from 'node:http';
+import { pathToFileURL } from 'node:url';
 import { operationContext, recordToolCall } from './operation-events.js';
+import {
+  annotationsForTool,
+  inputSchemaForTool,
+  loadToolCatalog,
+  requiresExplicitConfirmation,
+  toolsForPrincipal,
+} from './catalog-client.js';
+import { invocationForTool, invokeGatewayTool } from './gateway-client.js';
+import { invokeOwnerAdminTool, isOwnerAdminTool } from './owner-admin-client.js';
 
 const PORT = Number(process.env.PORT) || 8080;
 
@@ -30,7 +39,7 @@ const PORT = Number(process.env.PORT) || 8080;
 
 // ── Factory: create a fresh MCP server per request (stateless) ───────────
 
-function createServer(requestContext) {
+export function createServer(requestContext) {
   const srv = new McpServer({
     name: 'yuqi-portfolio',
     version: '1.0.0',
@@ -38,10 +47,13 @@ function createServer(requestContext) {
   });
 
   for (const tool of tools) {
-    srv.tool(
+    srv.registerTool(
       tool.name,
-      tool.description,
-      tool.zodSchema,
+      {
+        description: tool.description,
+        inputSchema: tool.zodSchema,
+        annotations: tool.annotations,
+      },
       async (args) => {
         const startedAt = Date.now();
         try {
@@ -66,7 +78,8 @@ function createServer(requestContext) {
 
 // ── Factory: admin MCP server (authenticated, includes write tools) ──────
 
-function createAdminServer(authContext) {
+export async function createAdminServer(authContext, catalogLoader = loadToolCatalog) {
+  authContext.actor = authContext.actor || `mcp-server:admin:${authContext.email}`;
   const requestContext = authContext.operationContext;
   const srv = new McpServer({
     name: 'yuqi-portfolio-admin',
@@ -76,10 +89,13 @@ function createAdminServer(authContext) {
 
   // Include public read tools
   for (const tool of tools) {
-    srv.tool(
+    srv.registerTool(
       tool.name,
-      tool.description,
-      tool.zodSchema,
+      {
+        description: tool.description,
+        inputSchema: tool.zodSchema,
+        annotations: tool.annotations,
+      },
       async (args) => {
         const startedAt = Date.now();
         try {
@@ -101,10 +117,13 @@ function createAdminServer(authContext) {
 
   // Admin-only tools
   for (const tool of adminTools) {
-    srv.tool(
+    srv.registerTool(
       tool.name,
-      tool.description,
-      tool.zodSchema,
+      {
+        description: tool.description,
+        inputSchema: tool.zodSchema,
+        annotations: tool.annotations,
+      },
       async (args) => {
         const startedAt = Date.now();
         try {
@@ -124,12 +143,78 @@ function createAdminServer(authContext) {
     );
   }
 
+  const catalog = toolsForPrincipal(await catalogLoader(), authContext);
+  for (const tool of catalog) {
+    srv.registerTool(
+      tool.name,
+      {
+        description: `${tool.description} [${tool.mode}; risk=${tool.riskLevel}; role=${tool.requiredRole}]`,
+        inputSchema: inputSchemaForTool(tool),
+        annotations: annotationsForTool(tool),
+      },
+      async (rawArgs) => executeCatalogTool(tool, rawArgs, authContext, requestContext)
+    );
+  }
+
   return srv;
+}
+
+async function executeCatalogTool(tool, rawArgs, authContext, requestContext) {
+  const startedAt = Date.now();
+  try {
+    if (requiresExplicitConfirmation(tool, rawArgs)) {
+      throw new Error('Explicit user confirmation is required before this operation can run');
+    }
+    const { args, context } = invocationForTool(tool, rawArgs, authContext);
+    const result = isOwnerAdminTool(tool.name)
+      ? await invokeOwnerAdminTool(tool.name, stripControlArguments(args), authContext)
+      : await invokeGatewayTool(tool.name, args, context);
+    await recordToolCall({
+      context: requestContext,
+      toolName: tool.name,
+      status: 'completed',
+      durationMs: Date.now() - startedAt,
+    });
+    return toolResult(result);
+  } catch (error) {
+    await recordToolCall({
+      context: requestContext,
+      toolName: tool.name,
+      status: 'failed',
+      durationMs: Date.now() - startedAt,
+      errorCode: error.name || 'ToolError',
+    });
+    return toolError(error);
+  }
+}
+
+function stripControlArguments(args) {
+  const result = { ...args };
+  delete result._confirmed;
+  delete result._confirmedTimeRange;
+  return result;
+}
+
+function toolResult(result) {
+  return {
+    content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+    ...(result && typeof result === 'object' && !Array.isArray(result)
+      ? { structuredContent: result }
+      : {}),
+  };
+}
+
+function toolError(error) {
+  return {
+    content: [{ type: 'text', text: JSON.stringify({ error: error.message }) }],
+    isError: true,
+  };
 }
 
 // ── HTTP Server with Streamable HTTP Transport ───────────────────────────
 
-const httpServer = http.createServer(async (req, res) => {
+export function createHttpServer() {
+  return http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
   // Health check
@@ -164,7 +249,7 @@ const httpServer = http.createServer(async (req, res) => {
       const authHeader = req.headers['authorization'] || null;
       const authContext = await verifyAdminAuth(authHeader);
       authContext.operationContext = operationContext(req, `mcp-server:admin:${authContext.email || 'unknown'}`);
-      const srv = createAdminServer(authContext);
+      const srv = await createAdminServer(authContext);
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // Stateless
       });
@@ -188,13 +273,18 @@ const httpServer = http.createServer(async (req, res) => {
   // 404
   res.writeHead(404, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ error: 'Not found. Use /mcp for MCP protocol.' }));
-});
+  });
+}
 
-httpServer.listen(PORT, () => {
-  console.log(`Portfolio MCP Server listening on port ${PORT}`);
-  console.log(`MCP endpoint: http://localhost:${PORT}/mcp`);
-  console.log(`Admin MCP endpoint: http://localhost:${PORT}/mcp/admin (JWT required)`);
-  console.log(`Health: http://localhost:${PORT}/health`);
-  console.log(`Public tools: ${tools.map(t => t.name).join(', ')}`);
-  console.log(`Admin tools: ${adminTools.map(t => t.name).join(', ')}`);
-});
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMain) {
+  const httpServer = createHttpServer();
+  httpServer.listen(PORT, () => {
+    console.log(`Portfolio MCP Server listening on port ${PORT}`);
+    console.log(`MCP endpoint: http://localhost:${PORT}/mcp`);
+    console.log(`Admin MCP endpoint: http://localhost:${PORT}/mcp/admin (JWT required)`);
+    console.log(`Health: http://localhost:${PORT}/health`);
+    console.log(`Public tools: ${tools.map(t => t.name).join(', ')}`);
+    console.log('Admin tools: canonical gateway catalog + compatibility aliases');
+  });
+}

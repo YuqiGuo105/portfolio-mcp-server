@@ -19,11 +19,11 @@ jobs:
 
       - run: npm ci
 
-      - name: Syntax check all source files
-        run: |
-          for f in src/*.js; do
-            node --check "$f"
-          done
+      - name: Static checks
+        run: npm run check
+
+      - name: Unit and MCP protocol tests
+        run: npm test
 
       - name: Verify server starts
         run: |

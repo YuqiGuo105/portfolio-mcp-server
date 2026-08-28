@@ -102,8 +102,13 @@ codex mcp add yuqi-portfolio-admin \
   --oauth-resource https://www.yuqi.site/mcp/admin
 codex mcp login yuqi-portfolio-admin \
   --oauth-client-registration dcr \
-  --scopes openid,email,profile
+  --scopes email,profile
 ```
+
+The admin resource requests only the access-token scopes it uses. It does not
+request `openid`, because the MCP resource server does not consume an OIDC ID
+token; identity and managed admin authorization are resolved from the signed
+Supabase access token.
 
 The OAuth grant uses short-lived access tokens and refresh-token rotation. The
 administrator can revoke the client grant from Supabase Auth. Do not add this

@@ -16,7 +16,7 @@ test('publishes OAuth protected-resource metadata for the admin MCP endpoint', (
   assert.deepEqual(protectedResourceMetadata(), {
     resource: 'https://www.yuqi.site/mcp/admin',
     authorization_servers: ['https://project.supabase.co/auth/v1'],
-    scopes_supported: ['openid', 'email', 'profile'],
+    scopes_supported: ['email', 'profile'],
     bearer_methods_supported: ['header'],
     resource_documentation: 'https://github.com/YuqiGuo105/portfolio-mcp-server/blob/main/docs/CLIENT_INTEGRATIONS.md',
   });
@@ -24,20 +24,22 @@ test('publishes OAuth protected-resource metadata for the admin MCP endpoint', (
 
 test('builds an RFC 9728 bearer challenge without exposing credentials', () => {
   process.env.SITE_URL = 'https://www.yuqi.site';
-  delete process.env.MCP_SERVER_PUBLIC_URL;
+  process.env.MCP_SERVER_PUBLIC_URL = 'https://portfolio-mcp-server.example.run.app';
+  delete process.env.MCP_RESOURCE_ORIGIN;
   assert.equal(
     protectedResourceMetadataUrl(),
     'https://www.yuqi.site/.well-known/oauth-protected-resource/mcp/admin'
   );
   assert.equal(
     bearerChallenge(),
-    'Bearer resource_metadata="https://www.yuqi.site/.well-known/oauth-protected-resource/mcp/admin", scope="openid email profile"'
+    'Bearer resource_metadata="https://www.yuqi.site/.well-known/oauth-protected-resource/mcp/admin", scope="email profile"'
   );
 });
 
 test('unauthenticated admin MCP requests advertise OAuth discovery', async (t) => {
   process.env.SITE_URL = 'https://www.yuqi.site';
-  delete process.env.MCP_SERVER_PUBLIC_URL;
+  process.env.MCP_SERVER_PUBLIC_URL = 'https://portfolio-mcp-server.example.run.app';
+  delete process.env.MCP_RESOURCE_ORIGIN;
   const server = createHttpServer();
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   t.after(() => server.close());
@@ -47,6 +49,6 @@ test('unauthenticated admin MCP requests advertise OAuth discovery', async (t) =
   assert.equal(response.status, 401);
   assert.equal(
     response.headers.get('www-authenticate'),
-    'Bearer resource_metadata="https://www.yuqi.site/.well-known/oauth-protected-resource/mcp/admin", scope="openid email profile"'
+    'Bearer resource_metadata="https://www.yuqi.site/.well-known/oauth-protected-resource/mcp/admin", scope="email profile"'
   );
 });

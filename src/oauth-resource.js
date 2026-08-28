@@ -10,7 +10,7 @@ export function adminResourceUrl() {
 
 export function protectedResourceMetadataUrl() {
   const metadataOrigin = trimTrailingSlash(
-    process.env.MCP_SERVER_PUBLIC_URL || process.env.SITE_URL || DEFAULT_SITE_URL
+    process.env.MCP_RESOURCE_ORIGIN || process.env.SITE_URL || DEFAULT_SITE_URL
   );
   return `${metadataOrigin}/.well-known/oauth-protected-resource/mcp/admin`;
 }
@@ -24,12 +24,12 @@ export function protectedResourceMetadata() {
   return {
     resource: adminResourceUrl(),
     ...(issuer ? { authorization_servers: [issuer] } : {}),
-    scopes_supported: ['openid', 'email', 'profile'],
+    scopes_supported: ['email', 'profile'],
     bearer_methods_supported: ['header'],
     resource_documentation: 'https://github.com/YuqiGuo105/portfolio-mcp-server/blob/main/docs/CLIENT_INTEGRATIONS.md',
   };
 }
 
 export function bearerChallenge() {
-  return `Bearer resource_metadata="${protectedResourceMetadataUrl()}", scope="openid email profile"`;
+  return `Bearer resource_metadata="${protectedResourceMetadataUrl()}", scope="email profile"`;
 }

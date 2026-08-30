@@ -88,6 +88,23 @@ test('adds confirmation, dry-run and idempotency controls to write tools', () =>
   assert.equal(requiresExplicitConfirmation({ ...writeTool, confirmationMethod: 'email_otp' }, {}), false);
 });
 
+test('propagates declarative string length bounds into MCP schemas', () => {
+  const schema = inputSchemaForTool({
+    ...readTool,
+    parameters: [{
+      name: 'imageBase64',
+      type: 'string',
+      required: true,
+      minLength: 4,
+      maxLength: 8,
+    }],
+  });
+
+  assert.equal(schema.imageBase64.safeParse('abcd').success, true);
+  assert.equal(schema.imageBase64.safeParse('abc').success, false);
+  assert.equal(schema.imageBase64.safeParse('abcdefghi').success, false);
+});
+
 test('admin MCP lists role-scoped catalog tools and blocks unconfirmed writes', async () => {
   const authContext = {
     email: 'publisher@example.com',

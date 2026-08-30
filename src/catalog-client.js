@@ -64,6 +64,10 @@ export function inputSchemaForTool(tool) {
   const shape = {};
   for (const parameter of tool.parameters) {
     let schema = schemaForType(parameter.type);
+    if (parameter.type === 'string') {
+      if (Number.isInteger(parameter.minLength)) schema = schema.min(parameter.minLength);
+      if (Number.isInteger(parameter.maxLength)) schema = schema.max(parameter.maxLength);
+    }
     if (parameter.description) schema = schema.describe(parameter.description);
     if (!parameter.required) schema = schema.optional();
     shape[parameter.name] = schema;
@@ -128,6 +132,8 @@ function normalizeToolDefinition(raw) {
           type: String(item.type || 'string').toLowerCase(),
           required: item.required === true,
           description: item.description ? String(item.description) : '',
+          minLength: Number.isInteger(item.minLength) ? item.minLength : null,
+          maxLength: Number.isInteger(item.maxLength) ? item.maxLength : null,
         }))
       : [],
   });

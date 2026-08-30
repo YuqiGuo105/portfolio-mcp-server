@@ -56,7 +56,7 @@ operations. The current catalog covers these domains:
 
 | Domain | Representative operations |
 | --- | --- |
-| Content | Search/get, create draft, update, publish, Search/RAG reindex |
+| Content | Search/get, create draft, update, upload managed cover, publish, Search/RAG reindex |
 | Recovery | Inspect failed jobs, retry jobs, replay outbox events, drain workers |
 | Analytics | Visitor summary, top pages and referrer aggregates |
 | Notifications | Subscribers, delivery status, retries, test delivery and subscription status |
@@ -90,6 +90,13 @@ same risk gate.
 Admin identity management is owner-only. Those calls forward the original JWT
 to admin-service, which enforces the owner invariant and writes its own audit
 record. Operational tool events are also correlated into the platform timeline.
+
+`admin.upload_content_cover` attaches a PNG, JPEG, or WebP cover to existing
+content. The caller supplies either an allow-listed HTTPS URL or a bounded
+base64 payload. The owning admin service verifies the file signature, stores an
+immutable SHA-256-addressed object in Supabase Storage, updates the content row,
+and compensates a newly created object if the database update fails. The
+Supabase service-role credential never leaves the backend service.
 
 ### Adding or changing a capability
 

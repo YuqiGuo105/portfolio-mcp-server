@@ -16,6 +16,10 @@ const OWNER_ONLY_TOOLS = new Set([
   'admin.list_admin_users',
   'admin.upsert_admin_user',
   'admin.update_admin_user_status',
+  'career.get_candidate_profile',
+  'career.refresh_candidate_profile',
+  'career.resolve_application_fields',
+  'career.update_private_answers',
 ]);
 
 let cachedCatalog = null;

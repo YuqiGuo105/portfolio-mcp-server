@@ -44,6 +44,12 @@ const ownerTool = {
   requiredRole: 'ADMIN',
 };
 
+const careerTool = {
+  ...readTool,
+  name: 'career.get_candidate_profile',
+  requiredRole: 'ADMIN',
+};
+
 test('loads and caches the canonical gateway catalog', async () => {
   process.env.MCP_GATEWAY_INTERNAL_TOKEN = 'test-token';
   resetCatalogCacheForTest();
@@ -66,11 +72,11 @@ test('loads and caches the canonical gateway catalog', async () => {
 });
 
 test('filters tools by role and owner capability', () => {
-  const catalog = [readTool, writeTool, ownerTool];
+  const catalog = [readTool, writeTool, ownerTool, careerTool];
   assert.deepEqual(toolsForPrincipal(catalog, { role: 'EDITOR', owner: false }).map(t => t.name), [readTool.name]);
   assert.deepEqual(toolsForPrincipal(catalog, { role: 'PUBLISHER', owner: false }).map(t => t.name), [readTool.name, writeTool.name]);
   assert.deepEqual(toolsForPrincipal(catalog, { role: 'ADMIN', owner: false }).map(t => t.name), [readTool.name, writeTool.name]);
-  assert.deepEqual(toolsForPrincipal(catalog, { role: 'ADMIN', owner: true }).map(t => t.name), [readTool.name, writeTool.name, ownerTool.name]);
+  assert.deepEqual(toolsForPrincipal(catalog, { role: 'ADMIN', owner: true }).map(t => t.name), [readTool.name, writeTool.name, ownerTool.name, careerTool.name]);
 });
 
 test('adds confirmation, dry-run and idempotency controls to write tools', () => {

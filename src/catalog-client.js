@@ -20,6 +20,8 @@ const OWNER_ONLY_TOOLS = new Set([
   'career.refresh_candidate_profile',
   'career.resolve_application_fields',
   'career.update_private_answers',
+  'career.get_site_credential',
+  'career.prepare_site_credential',
 ]);
 
 let cachedCatalog = null;

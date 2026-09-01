@@ -19,6 +19,7 @@ const OWNER_ONLY_TOOLS = new Set([
   'career.get_candidate_profile',
   'career.refresh_candidate_profile',
   'career.resolve_application_fields',
+  'career.classify_application_fields',
   'career.start_application_workflow',
   'career.get_application_workflow',
   'career.record_application_resolution',

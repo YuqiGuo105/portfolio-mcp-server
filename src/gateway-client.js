@@ -8,12 +8,15 @@ import { randomUUID } from 'node:crypto';
 
 const GATEWAY_URL = (process.env.MCP_GATEWAY_URL || 'https://portfolio-mcp-gateway-702193211434.us-central1.run.app').replace(/\/+$/, '');
 const GATEWAY_TOKEN = process.env.MCP_GATEWAY_INTERNAL_TOKEN || '';
-const TIMEOUT_MS = Number(process.env.GATEWAY_TIMEOUT_MS) || 10_000;
+const DEFAULT_TIMEOUT_MS = 10_000;
+const DEFAULT_CAREER_TIMEOUT_MS = 30_000;
 
-export async function invokeGatewayTool(toolName, args, context) {
+export async function invokeGatewayTool(toolName, args, context, options = {}) {
   const url = `${GATEWAY_URL}/api/tools/${encodeURIComponent(toolName)}/invoke`;
+  const timeoutMs = options.timeoutMs || gatewayTimeoutForTool(toolName);
+  const fetchImpl = options.fetchImpl || fetch;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   const headers = {
     'Content-Type': 'application/json',
@@ -29,7 +32,7 @@ export async function invokeGatewayTool(toolName, args, context) {
   }
 
   try {
-    const res = await fetch(url, {
+    const res = await fetchImpl(url, {
       method: 'POST',
       headers,
       body: JSON.stringify(args),
@@ -42,9 +45,21 @@ export async function invokeGatewayTool(toolName, args, context) {
       throw new Error(err?.message || `Gateway ${res.status}: ${body.slice(0, 200)}`);
     }
     return safeParseJson(body) ?? body;
+  } catch (error) {
+    if (controller.signal.aborted || error?.name === 'AbortError') {
+      throw new Error(`${toolName} gateway timed out after ${timeoutMs}ms`, { cause: error });
+    }
+    throw error;
   } finally {
     clearTimeout(timer);
   }
+}
+
+export function gatewayTimeoutForTool(toolName, env = process.env) {
+  if (String(toolName).startsWith('career.')) {
+    return positiveNumber(env.CAREER_GATEWAY_TIMEOUT_MS, DEFAULT_CAREER_TIMEOUT_MS);
+  }
+  return positiveNumber(env.GATEWAY_TIMEOUT_MS, DEFAULT_TIMEOUT_MS);
 }
 
 export function invocationForTool(tool, rawArgs, authContext) {
@@ -65,4 +80,9 @@ export function invocationForTool(tool, rawArgs, authContext) {
 
 function safeParseJson(text) {
   try { return JSON.parse(text); } catch { return null; }
+}
+
+function positiveNumber(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }

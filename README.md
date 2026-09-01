@@ -154,6 +154,7 @@ npm run dev
 | `MCP_GATEWAY_URL` | No | Deployed portfolio gateway | Base URL of the internal MCP gateway |
 | `PORT` | No | `8080` | HTTP listening port |
 | `GATEWAY_TIMEOUT_MS` | No | `10000` | Gateway request timeout in milliseconds |
+| `CAREER_GATEWAY_TIMEOUT_MS` | No | `30000` | Owner-only Career tool timeout; exceeds the downstream 25-second bound for cold starts |
 | `SITE_URL` | No | `https://www.yuqi.site` | Base URL used to build canonical content links |
 | `MAX_CONTENT_LENGTH` | No | `8000` | Maximum returned article or project body length |
 | `SUPABASE_JWT_SECRET` | Admin endpoint | Empty | Verifies Supabase access tokens |

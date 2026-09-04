@@ -4,6 +4,26 @@ A dual-boundary [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
 
 Both endpoints use stateless Streamable HTTP and support clients such as ChatGPT, Gemini, Claude, GitHub Copilot, and Cursor. Business operations remain owned by their backend services; this edge provides discovery, authentication, policy metadata, invocation and audit correlation.
 
+## Use Yuqi Portfolio
+
+In Codex or ChatGPT, open **Plugins**, choose **Yuqi Portfolio**, and ask a
+question such as:
+
+- `Show me Yuqi's strongest backend projects.`
+- `Explain the portfolio platform architecture.`
+- `Find Yuqi's writing about distributed systems.`
+
+The public plugin is read-only and requires no account. Until its public Plugins
+Directory review is complete, use the [visual setup guide](https://www.yuqi.site/mcp-guide)
+or install the repository marketplace:
+
+```sh
+codex plugin marketplace add YuqiGuo105/portfolio-mcp-server
+codex plugin add yuqi-portfolio@yuqi-portfolio-platform
+```
+
+The production MCP endpoint is `https://www.yuqi.site/mcp`.
+
 ## System Design
 
 The edge view makes the public/admin trust boundary explicit and shows policy

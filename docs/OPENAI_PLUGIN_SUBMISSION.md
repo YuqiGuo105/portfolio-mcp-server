@@ -21,8 +21,8 @@ administrator endpoint is not part of this submission.
 ### Long description
 
 Yuqi Portfolio gives ChatGPT and Codex grounded, read-only access to Yuqi Guo's
-public engineering portfolio. Search production projects by technology or design
-pattern, retrieve published technical articles, inspect pre-authored architecture
+public engineering portfolio. Search all public portfolio content from one entry
+point, search production projects by technology or design pattern, retrieve published technical articles, inspect pre-authored architecture
 diagrams, and review public experience, skills, and education with canonical
 yuqi.site links. The plugin exposes only a curated public surface: it cannot edit
 content or access visitor records, subscribers, notifications, job applications,
@@ -97,7 +97,7 @@ operations.
 ## Reviewer notes
 
 - No test account or credentials are required.
-- All six tools are read-only and set `readOnlyHint: true`,
+- All seven tools are read-only and set `readOnlyHint: true`,
   `destructiveHint: false`, and `openWorldHint: false`.
 - Tool responses are sanitized and bounded before being returned.
 - The MCP service is production-hosted over HTTPS and is available without a

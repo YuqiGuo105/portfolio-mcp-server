@@ -59,6 +59,7 @@ therefore loses both UI and MCP access without a separate permission list.
 
 | Tool | Description | Inputs |
 | --- | --- | --- |
+| `search_portfolio` | Search projects, articles, life posts, and experience in one ranked result set | `query`, optional `types` and `limit` |
 | `search_projects` | Search projects by technology, architecture pattern, or keyword | `keyword`, optional `category` and `limit` |
 | `get_project` | Retrieve the details and links for a project | `projectId` |
 | `get_project_architecture` | Return pre-authored Mermaid diagrams stored with a project | `projectId` |

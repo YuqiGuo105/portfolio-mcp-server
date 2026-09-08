@@ -22,7 +22,7 @@ const PUBLIC_ANNOTATIONS = {
 export const tools = [
   {
     name: 'search_portfolio',
-    description: 'Search across Yuqi\'s public portfolio, including projects, technical articles, life posts, and professional experience. Returns ranked results and groups them by content type.',
+    description: 'Search public projects, technical articles, LIFE_BLOG travel/personal posts, and professional experience. For travel, cities or interviews search life posts too, then read matching articles with get_article using their sourceType. An empty keyword result is not evidence that something never happened.',
     zodSchema: {
       query: z.string().trim().min(1).max(300).describe('Search query, technology, architecture pattern, topic, company, or experience keyword'),
       types: z.array(z.enum(['PROJECT', 'BLOG', 'LIFE_BLOG', 'EXPERIENCE'])).min(1).max(4).optional()
@@ -37,7 +37,8 @@ export const tools = [
       async function retrieve(keyword) {
         // Apply type before the upstream limit; otherwise unrelated projects can hide article matches.
         for (const sourceType of requestedTypes) {
-          const result = await invokeGatewayTool('admin.search_content', { keyword, sourceType, limit });
+          const result = await invokeGatewayTool('admin.search_content', { keyword, sourceType, limit,
+            ...(args.category ? { category: args.category } : {}) });
           for (const raw of result?.items ?? result?.content ?? []) {
             const item = sanitizeContentItem(raw);
             if (!item || (sourceType && normalizeContentType(item.type) !== sourceType)) continue;
@@ -52,8 +53,15 @@ export const tools = [
         // Bounded OR fallback for mixed-language keywords, without a topic-specific synonym dictionary.
         for (const term of terms) await retrieve(term);
       }
+      const knowledge = items.size === 0 || [...items.values()].some(item => item.sourceRequiresLogin)
+        ? await invokeGatewayTool('portfolio.search_public_knowledge', { query: args.query, limit: Math.min(limit, 6) })
+        : null;
       return { ...buildPortfolioSearchResult(args.query, [...items.values()], limit),
+        evidence: knowledge?.evidence ?? [], evidenceTotal: knowledge?.total ?? 0,
+        status: items.size || knowledge?.total ? 'EVIDENCE_FOUND' : 'NO_EVIDENCE',
         searchMode: fallback ? 'keyword_union' : 'phrase',
+        searchedTypes: args.types ?? ['PROJECT', 'BLOG', 'LIFE_BLOG', 'EXPERIENCE'],
+        guidance: 'Read matching records and evidence before making factual claims. A keyword miss is not proof of absence. Evidence may come from owner-approved answers even when there are no matching articles. Restricted source records require admin login.',
         ...(fallback ? { queryTerms: terms } : {}) };
     },
   },
@@ -132,64 +140,71 @@ export const tools = [
 
   {
     name: 'search_articles',
-    description: 'Search Yuqi\'s published technical articles and blog posts by keyword or topic.',
+    description: 'Search BOTH published technical articles and life/travel posts. Use this for cities, travel and interviews as well as technical topics. Read results with get_article(articleId, sourceType); retain the returned BLOG or LIFE_BLOG type. No match does not establish that an event never happened.',
     zodSchema: {
-      keyword: z.string().describe('Search keyword or topic'),
+      keyword: z.string().trim().min(1).max(300).describe('Search keyword or topic'),
       category: z.string().optional().describe('Optional category filter'),
+      sourceType: z.enum(['BLOG', 'LIFE_BLOG']).optional().describe('Optional article collection; omitted searches both technical and life/travel posts'),
       limit: z.number().min(1).max(20).optional().describe('Max results (1-20, default 10)'),
     },
     annotations: PUBLIC_ANNOTATIONS,
     handler: async (args) => {
-      const result = await invokeGatewayTool('admin.search_content', {
-        keyword: args.keyword,
-        sourceType: 'BLOG',
-        category: args.category,
-        limit: Math.min(args.limit ?? 10, 20),
+      const result = await tools.find(tool => tool.name === 'search_portfolio').handler({
+        query: args.keyword, types: args.sourceType ? [args.sourceType] : ['BLOG', 'LIFE_BLOG'],
+        category: args.category, limit: Math.min(args.limit ?? 10, 20),
       });
-      const items = (result?.items ?? result?.content ?? []).map(sanitizeContentItem).filter(Boolean);
-      return { articles: items, total: items.length };
+      return { articles: result.results, total: result.total, evidence: result.evidence,
+        evidenceTotal: result.evidenceTotal, status: result.status, searchedTypes: result.searchedTypes,
+        searchMode: result.searchMode, guidance: result.guidance };
     },
   },
 
   {
     name: 'get_article',
-    description: 'Get the full content of a published article by ID. Content is truncated to a configured maximum length with a link to the full article.',
+    description: 'Read a technical or life/travel article. Pass sourceType from search results (BLOG or LIFE_BLOG), especially for numeric life-post IDs. Supports bounded pagination: when truncated, call again with nextOffset to inspect the rest before concluding that a fact is absent.',
     zodSchema: {
       articleId: contentIdSchema,
+      sourceType: z.enum(['BLOG', 'LIFE_BLOG']).optional().describe('Collection from the search result; if omitted, legacy numeric IDs resolve to LIFE_BLOG and other IDs to BLOG'),
+      offset: z.number().int().min(0).max(2000000).optional().describe('Character offset from nextOffset; defaults to 0'),
     },
     annotations: PUBLIC_ANNOTATIONS,
     handler: async (args) => {
       const result = await invokeGatewayTool('admin.get_content', {
-        sourceType: 'BLOG',
+        sourceType: args.sourceType ?? (/^\d+$/.test(String(args.articleId)) ? 'LIFE_BLOG' : 'BLOG'),
         sourceId: args.articleId,
       });
-      return sanitizeContentDetail(result) ?? { error: 'Article not found' };
+      return sanitizeContentDetail(result, { offset: args.offset ?? 0 }) ?? { error: 'Article not found' };
     },
   },
 
   {
+    name: 'search_knowledge',
+    description: 'Search published portfolio articles and owner-approved PUBLIC answers/profile evidence using multilingual semantic retrieval. Use for natural-language personal background, education, travel/cities, abbreviations or questions missed by keyword search. Answer in the user\'s requested language and only from relevant passages. Private career memory and restricted source records are NOT accessible.',
+    zodSchema: {
+      query: z.string().trim().min(1).max(300).describe('The full user question, in any language; do not reduce it to English keywords'),
+      limit: z.number().int().min(1).max(8).optional(),
+    },
+    annotations: PUBLIC_ANNOTATIONS,
+    handler: async args => invokeGatewayTool('portfolio.search_public_knowledge', { query: args.query, limit: args.limit ?? 6 }),
+  },
+
+  {
     name: 'get_profile',
-    description: 'Get Yuqi\'s public professional profile including work experience, skills, education, and evidence links.',
+    description: 'Get current owner-approved public profile evidence, including education, together with public work experience. Read profileEvidence for degrees and institutions; do not assume missing structured fields mean missing qualifications. Answer in the requested language. Does not access private application memory or resumes.',
     zodSchema: {},
     annotations: PUBLIC_ANNOTATIONS,
     handler: async () => {
-      // Try to get CV/profile content from the content API
+      const profile = await invokeGatewayTool('portfolio.get_public_profile', {});
+      // Read all public experience records; job-title filtering is not a profile source.
       const result = await invokeGatewayTool('admin.search_content', {
-        keyword: 'Software',
         sourceType: 'EXPERIENCE',
         limit: 50,
       });
       const items = result?.items ?? result?.content ?? [];
-      if (items.length === 0) {
-        // Fallback: return a static-safe profile from the site
-        return {
-          name: 'Yuqi Guo',
-          headline: 'Software Engineer',
-          url: 'https://www.yuqi.site/cv',
-          note: 'Full profile available at the CV page.',
-        };
-      }
-      return sanitizeProfile({ experience: items });
+      return { ...sanitizeProfile({ experience: items }), ...profile,
+        status: profile.profileEvidence?.length || items.length ? 'EVIDENCE_FOUND' : 'NO_EVIDENCE',
+        coverage: { profile: 'owner_reviewed_public_evidence', experience: 'public_experience_records',
+          skills: 'not_separately_structured' } };
     },
   },
 ];

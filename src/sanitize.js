@@ -9,6 +9,9 @@ const MAX_CONTENT_LENGTH = Number(process.env.MAX_CONTENT_LENGTH) || 8000;
 export function sanitizeContentItem(item) {
   item = unwrapContent(item);
   if (!item) return null;
+  const type = String(item.sourceType ?? item.type ?? '').toUpperCase();
+  const requiresLogin = item.requireLogin ?? item.require_login ?? item.raw?.require_login
+    ?? (type === 'LIFE' || type === 'LIFE_BLOG');
   const safe = {
     id: item.sourceId ?? item.id,
     type: item.sourceType ?? item.type,
@@ -19,21 +22,27 @@ export function sanitizeContentItem(item) {
     status: item.status,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
-    url: buildCanonicalUrl(item),
+    url: requiresLogin ? undefined : buildCanonicalUrl(item),
+    ...(requiresLogin ? { sourceRequiresLogin: true } : {}),
   };
   // Never expose: internalId, version, indexStatus, auditLog, rawHtml
   return safe;
 }
 
-export function sanitizeContentDetail(item) {
+export function sanitizeContentDetail(item, { offset = 0 } = {}) {
   item = unwrapContent(item);
   if (!item) return null;
   const base = sanitizeContentItem(item);
-  let body = item.body ?? item.content ?? '';
-  if (body.length > MAX_CONTENT_LENGTH) {
-    body = body.slice(0, MAX_CONTENT_LENGTH) + '\n\n[Content truncated. Full article at ' + base.url + ']';
+  if (base.sourceRequiresLogin) {
+    return { ...base, status: 'SOURCE_REQUIRES_LOGIN',
+      guidance: 'The original article requires sign-in. Use search_knowledge with the user question for public-answer evidence; do not disclose a restricted source link or infer that the article has no relevant information.' };
   }
-  return { ...base, body };
+  const content = item.body ?? item.content ?? '';
+  const start = Math.min(Math.max(0, offset), content.length);
+  const end = Math.min(start + MAX_CONTENT_LENGTH, content.length);
+  const truncated = end < content.length;
+  return { ...base, body: content.slice(start, end), offset: start, totalLength: content.length,
+    truncated, ...(truncated ? { nextOffset: end } : {}) };
 }
 
 function unwrapContent(item) {
@@ -47,14 +56,14 @@ export function sanitizeProfile(data) {
   return {
     name: data.name ?? data.title,
     headline: data.headline ?? data.summary,
-    skills: Array.isArray(data.skills) ? data.skills : [],
+    ...(Array.isArray(data.skills) ? { skills: data.skills } : {}),
     experience: Array.isArray(data.experience) ? data.experience.map(e => ({
-      company: e.company,
-      title: e.title ?? e.role,
-      period: e.period ?? e.duration,
-      description: e.description?.slice(0, 500),
+      company: e.company ?? e.title,
+      title: e.role ?? e.summary ?? e.title,
+      period: e.period ?? e.duration ?? e.raw?.date,
+      description: (e.description ?? e.content)?.slice(0, 2000),
     })) : [],
-    education: Array.isArray(data.education) ? data.education : [],
+    ...(Array.isArray(data.education) ? { education: data.education } : {}),
     url: `${SITE_URL}/cv`,
   };
 }

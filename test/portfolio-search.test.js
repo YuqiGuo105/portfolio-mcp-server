@@ -12,7 +12,7 @@ test('mixed language query falls back to bounded term union with upstream type f
     calls.push(args);
     const match = ['面试', 'offer'].includes(args.keyword) && args.sourceType === 'LIFE_BLOG';
     return new Response(JSON.stringify({ items: match ? [
-      { sourceType: 'LIFE_BLOG', sourceId: '1', title: 'New Grad Offer', summary: 'Interview journal' },
+      { sourceType: 'LIFE_BLOG', sourceId: '1', title: 'New Grad Offer', summary: 'Interview journal', raw: { require_login: false } },
     ] : [] }));
   };
   const result = await tools.find(tool => tool.name === 'search_portfolio').handler({

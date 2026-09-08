@@ -63,11 +63,20 @@ therefore loses both UI and MCP access without a separate permission list.
 | `search_projects` | Search projects by technology, architecture pattern, or keyword | `keyword`, optional `category` and `limit` |
 | `get_project` | Retrieve the details and links for a project | `projectId` |
 | `get_project_architecture` | Return pre-authored Mermaid diagrams stored with a project | `projectId` |
-| `search_articles` | Search published technical articles and blog posts | `keyword`, optional `category` and `limit` |
-| `get_article` | Retrieve a published article by ID | `articleId` |
-| `get_profile` | Retrieve Yuqi's public experience, skills, education, and CV link | None |
+| `search_articles` | Search technical and life/travel posts; semantic evidence fallback on keyword misses | `keyword`, optional `sourceType`, `category` and `limit` |
+| `get_article` | Read technical or life articles, including subsequent pages | `articleId`, optional `sourceType` and `offset` |
+| `get_profile` | Read owner-approved public profile evidence (including education) and public work experience | None |
+| `search_knowledge` | Multilingual semantic search over published content and approved public answers | `query`, optional `limit` |
 
 All tools are read-only and non-destructive. Search results are limited to 20 items. Responses omit internal IDs, audit data, indexing state, raw HTML, and other private implementation fields; long content is truncated to a configurable maximum.
+
+All evidence must be `ACTIVE`, explicitly `public`, and retrieval-enabled. Personal
+profile and answer snippets additionally require `approved` review. The original
+source hash is checked again before returning a personal answer
+snippet. Private resumes, contact records and career memory are not queried by these
+tools. Restricted source identifiers and URLs are withheld. A failed retrieval is
+reported as a tool error, never as an empty education record. Read returned evidence
+before answering; zero keyword results alone do not prove a fact is absent.
 
 ## Admin Control Plane
 

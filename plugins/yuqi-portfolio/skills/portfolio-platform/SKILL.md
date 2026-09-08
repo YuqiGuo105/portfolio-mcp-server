@@ -12,6 +12,10 @@ portfolio content.
 
 - Reply in the same language as the user's latest message unless they request another language.
 - Prefer search tools to discover records, then use the matching get tool for full details.
+- Invoke only callables present in the current runtime tool registry. Never type,
+  infer, or transform a display label such as `Portfolio:search_portfolio` into
+  a callable name. If a tool is not loaded, refresh tool discovery and invoke
+  the exact callable returned by the client.
 - Use `get_profile` and read `profileEvidence` for education; missing structured arrays do not establish missing qualifications.
 - For personal questions, city abbreviations, or multilingual questions, use `search_knowledge` with the full question. Article searches also return semantic `evidence` when keyword search misses.
 - `search_articles` covers both technical and life posts. Pass the result's `type` as `sourceType` to `get_article`, and follow `nextOffset` when the body is truncated.

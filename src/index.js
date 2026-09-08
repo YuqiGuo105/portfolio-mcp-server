@@ -38,6 +38,15 @@ import {
 } from './oauth-resource.js';
 
 const PORT = Number(process.env.PORT) || 8080;
+const SERVER_VERSION = '1.0.1';
+
+const TOOL_INVOCATION_INSTRUCTIONS = [
+  'Invoke tools only through the callable returned by the client\'s current tool registry.',
+  'Never infer, prefix, namespace, or otherwise construct a callable name from a UI label.',
+  'For example, "Portfolio:search_portfolio" is a display label, not a callable tool name.',
+  'The protocol-level portfolio-wide search tool is named "search_portfolio"; clients may expose it through a generated namespaced callable.',
+  'If a callable is unavailable, refresh tool discovery and use the newly registered callable instead of retrying a guessed name.',
+].join(' ');
 
 // ── Create MCP Server ────────────────────────────────────────────────────
 
@@ -46,8 +55,10 @@ const PORT = Number(process.env.PORT) || 8080;
 export function createServer(requestContext) {
   const srv = new McpServer({
     name: 'yuqi-portfolio',
-    version: '1.0.0',
+    version: SERVER_VERSION,
     description: "Yuqi Guo's Portfolio — search projects, articles, and professional profile",
+  }, {
+    instructions: TOOL_INVOCATION_INSTRUCTIONS,
   });
 
   for (const tool of tools) {
@@ -84,8 +95,10 @@ export async function createAdminServer(authContext, catalogLoader = loadToolCat
   const requestContext = authContext.operationContext;
   const srv = new McpServer({
     name: 'yuqi-portfolio-admin',
-    version: '1.0.0',
+    version: SERVER_VERSION,
     description: "Yuqi Guo's Portfolio Admin — manage alert rules (authenticated)",
+  }, {
+    instructions: TOOL_INVOCATION_INSTRUCTIONS,
   });
 
   // Include public read tools
@@ -215,7 +228,7 @@ export function createHttpServer() {
   // Health check
   if (url.pathname === '/health' || url.pathname === '/') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', server: 'yuqi-portfolio-mcp', version: '1.0.0' }));
+    res.end(JSON.stringify({ status: 'ok', server: 'yuqi-portfolio-mcp', version: SERVER_VERSION }));
     return;
   }
 

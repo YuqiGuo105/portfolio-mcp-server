@@ -84,6 +84,34 @@ test('profile reads approved education evidence and maps normalized experience',
   assert.ok(!JSON.stringify(result).includes('secret'));
 });
 
+test('social profile tool returns only owner-configured verified HTTPS links', async t => {
+  const previous = {
+    github: process.env.PUBLIC_GITHUB_URL,
+    leetcode: process.env.PUBLIC_LEETCODE_URL,
+    instagram: process.env.PUBLIC_INSTAGRAM_URL,
+  };
+  t.after(() => {
+    restoreEnv('PUBLIC_GITHUB_URL', previous.github);
+    restoreEnv('PUBLIC_LEETCODE_URL', previous.leetcode);
+    restoreEnv('PUBLIC_INSTAGRAM_URL', previous.instagram);
+  });
+  process.env.PUBLIC_GITHUB_URL = 'https://github.com/example';
+  process.env.PUBLIC_LEETCODE_URL = 'http://leetcode.com/u/example';
+  process.env.PUBLIC_INSTAGRAM_URL = 'https://user:secret@instagram.com/example';
+
+  const result = await tools.find(tool => tool.name === 'get_social_profiles').handler({});
+  assert.deepEqual(result.profiles, [{
+    id: 'github', label: 'GitHub', url: 'https://github.com/example',
+  }]);
+  assert.equal(result.total, 1);
+  assert.equal(result.status, 'EVIDENCE_FOUND');
+});
+
+function restoreEnv(name, value) {
+  if (value === undefined) delete process.env[name];
+  else process.env[name] = value;
+}
+
 test('article keyword miss falls back to semantic evidence without a city alias dictionary', async t => {
   mockGateway(t, (url, args) => {
     if (url.includes('portfolio.search_public_knowledge')) {

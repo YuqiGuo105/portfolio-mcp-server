@@ -5,6 +5,7 @@
  */
 
 import { invokeGatewayTool } from './gateway-client.js';
+import { publicSocialProfiles } from './public-profiles.js';
 import { sanitizeContentItem, sanitizeContentDetail, sanitizeProfile } from './sanitize.js';
 import { z } from 'zod';
 
@@ -189,8 +190,24 @@ export const tools = [
   },
 
   {
+    name: 'get_social_profiles',
+    description: 'Get Yuqi Guo\'s verified public GitHub, LeetCode, and Instagram profile links. Returns only HTTPS URLs configured by the portfolio owner; use the exact returned URLs and do not guess missing profiles.',
+    zodSchema: {},
+    annotations: PUBLIC_ANNOTATIONS,
+    handler: async () => {
+      const profiles = publicSocialProfiles();
+      return {
+        profiles,
+        total: profiles.length,
+        status: profiles.length ? 'EVIDENCE_FOUND' : 'NO_EVIDENCE',
+        guidance: 'These are owner-configured public profile links. Use the exact URL returned for each platform.',
+      };
+    },
+  },
+
+  {
     name: 'get_profile',
-    description: 'Get current owner-approved public profile evidence, including education, together with public work experience. Read profileEvidence for degrees and institutions; do not assume missing structured fields mean missing qualifications. Answer in the requested language. Does not access private application memory or resumes.',
+    description: 'Get current owner-approved public profile evidence, including education, public work experience, and verified GitHub, LeetCode, and Instagram links. Read profileEvidence for degrees and institutions; do not assume missing structured fields mean missing qualifications. Answer in the requested language. Does not access private application memory or resumes.',
     zodSchema: {},
     annotations: PUBLIC_ANNOTATIONS,
     handler: async () => {
@@ -201,10 +218,13 @@ export const tools = [
         limit: 50,
       });
       const items = result?.items ?? result?.content ?? [];
+      const socialProfiles = publicSocialProfiles();
       return { ...sanitizeProfile({ experience: items }), ...profile,
-        status: profile.profileEvidence?.length || items.length ? 'EVIDENCE_FOUND' : 'NO_EVIDENCE',
+        socialProfiles,
+        status: profile.profileEvidence?.length || items.length || socialProfiles.length
+          ? 'EVIDENCE_FOUND' : 'NO_EVIDENCE',
         coverage: { profile: 'owner_reviewed_public_evidence', experience: 'public_experience_records',
-          skills: 'not_separately_structured' } };
+          socialProfiles: 'owner_configured_public_links', skills: 'not_separately_structured' } };
     },
   },
 ];

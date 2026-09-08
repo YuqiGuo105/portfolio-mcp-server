@@ -97,7 +97,7 @@ operations.
 ## Reviewer notes
 
 - No test account or credentials are required.
-- All seven tools are read-only and set `readOnlyHint: true`,
+- All public tools are read-only and set `readOnlyHint: true`,
   `destructiveHint: false`, and `openWorldHint: false`.
 - Tool responses are sanitized and bounded before being returned.
 - The MCP service is production-hosted over HTTPS and is available without a

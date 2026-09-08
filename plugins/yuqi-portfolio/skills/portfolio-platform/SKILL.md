@@ -17,6 +17,7 @@ portfolio content.
   a callable name. If a tool is not loaded, refresh tool discovery and invoke
   the exact callable returned by the client.
 - Use `get_profile` and read `profileEvidence` for education; missing structured arrays do not establish missing qualifications.
+- Use `get_social_profiles` for Yuqi's GitHub, LeetCode, or Instagram. Preserve the exact owner-configured URL returned by the tool; never reconstruct a handle or substitute a search result.
 - For personal questions, city abbreviations, or multilingual questions, use `search_knowledge` with the full question. Article searches also return semantic `evidence` when keyword search misses.
 - `search_articles` covers both technical and life posts. Pass the result's `type` as `sourceType` to `get_article`, and follow `nextOffset` when the body is truncated.
 - Do not convert zero keyword hits into a factual denial. Check the returned evidence and distinguish retrieval errors from an actual lack of supporting evidence.

@@ -65,7 +65,8 @@ therefore loses both UI and MCP access without a separate permission list.
 | `get_project_architecture` | Return pre-authored Mermaid diagrams stored with a project | `projectId` |
 | `search_articles` | Search technical and life/travel posts; semantic evidence fallback on keyword misses | `keyword`, optional `sourceType`, `category` and `limit` |
 | `get_article` | Read technical or life articles, including subsequent pages | `articleId`, optional `sourceType` and `offset` |
-| `get_profile` | Read owner-approved public profile evidence (including education) and public work experience | None |
+| `get_profile` | Read owner-approved public profile evidence, work experience, and verified public profile links | None |
+| `get_social_profiles` | Read the exact owner-configured GitHub, LeetCode, and Instagram URLs | None |
 | `search_knowledge` | Multilingual semantic search over published content and approved public answers | `query`, optional `limit` |
 
 All tools are read-only and non-destructive. Search results are limited to 20 items. Responses omit internal IDs, audit data, indexing state, raw HTML, and other private implementation fields; long content is truncated to a configurable maximum.

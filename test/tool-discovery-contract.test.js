@@ -15,6 +15,7 @@ test('tool discovery advertises the canonical search name and rejects display-la
     const names = (await client.listTools()).tools.map(tool => tool.name);
 
     assert.ok(names.includes('search_portfolio'));
+    assert.ok(names.includes('get_social_profiles'));
     assert.ok(!names.includes('Portfolio:search_portfolio'));
     assert.match(client.getInstructions(), /current tool registry/i);
     assert.match(client.getInstructions(), /Portfolio:search_portfolio/);

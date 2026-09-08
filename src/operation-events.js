@@ -29,7 +29,7 @@ export async function recordToolCall({ context, toolName, status, durationMs, er
     runId: null,
     correlationId: context.correlationId,
     causationId: null,
-    idempotencyKey: `${context.correlationId}:${toolName}`,
+    idempotencyKey: eventId,
     actor: { type: context.actor.startsWith('mcp-server:admin') ? 'USER' : 'SERVICE', id: context.actor },
     subject: { type: 'mcp_tool', id: toolName, version: null },
     sourceService: 'portfolio-mcp-server',

@@ -123,8 +123,8 @@ export function inputSchemaForTool(tool) {
     );
   }
   if (tool.mode === 'WRITE') {
-    shape._idempotencyKey = z.string().min(8).max(200).optional().describe(
-      'Optional caller-supplied idempotency key. The server generates one when omitted.'
+    shape._idempotencyKey = z.string().min(8).max(200).describe(
+      'Required stable key for this write intent (for example a UUID). Reuse exactly the same key and arguments on retry. Never create a new key to retry an uncertain operation; call operation.get_status first.'
     );
   }
   return shape;

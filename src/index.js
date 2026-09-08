@@ -30,7 +30,7 @@ import {
   requiresExplicitConfirmation,
   toolsForPrincipal,
 } from './catalog-client.js';
-import { invocationForTool, invokeGatewayTool } from './gateway-client.js';
+import { invocationForTool, invokeGatewayTool, invokeOwnerWrite } from './gateway-client.js';
 import { invokeOwnerAdminTool, isOwnerAdminTool } from './owner-admin-client.js';
 import {
   bearerChallenge,
@@ -68,10 +68,7 @@ export function createServer(requestContext) {
           };
         } catch (err) {
           await recordToolCall({ context: requestContext, toolName: tool.name, status: 'failed', durationMs: Date.now() - startedAt, errorCode: err.name || 'ToolError' });
-          return {
-            content: [{ type: 'text', text: JSON.stringify({ error: err.message }) }],
-            isError: true,
-          };
+          return toolError(err);
         }
       }
     );
@@ -105,15 +102,10 @@ export async function createAdminServer(authContext, catalogLoader = loadToolCat
         try {
           const result = await tool.handler(args, authContext);
           await recordToolCall({ context: requestContext, toolName: tool.name, status: 'completed', durationMs: Date.now() - startedAt });
-          return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-          };
+          return toolResult(result);
         } catch (err) {
           await recordToolCall({ context: requestContext, toolName: tool.name, status: 'failed', durationMs: Date.now() - startedAt, errorCode: err.name || 'ToolError' });
-          return {
-            content: [{ type: 'text', text: JSON.stringify({ error: err.message }) }],
-            isError: true,
-          };
+          return toolError(err);
         }
       }
     );
@@ -133,15 +125,10 @@ export async function createAdminServer(authContext, catalogLoader = loadToolCat
         try {
           const result = await tool.handler(args, authContext);
           await recordToolCall({ context: requestContext, toolName: tool.name, status: 'completed', durationMs: Date.now() - startedAt });
-          return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-          };
+          return toolResult(result);
         } catch (err) {
           await recordToolCall({ context: requestContext, toolName: tool.name, status: 'failed', durationMs: Date.now() - startedAt, errorCode: err.name || 'ToolError' });
-          return {
-            content: [{ type: 'text', text: JSON.stringify({ error: err.message }) }],
-            isError: true,
-          };
+          return toolError(err);
         }
       }
     );
@@ -171,7 +158,9 @@ async function executeCatalogTool(tool, rawArgs, authContext, requestContext) {
     }
     const { args, context } = invocationForTool(tool, rawArgs, authContext);
     const result = isOwnerAdminTool(tool.name)
-      ? await invokeOwnerAdminTool(tool.name, stripControlArguments(args), authContext)
+      ? tool.mode === 'WRITE'
+        ? await invokeOwnerWrite(tool.name,args,context,() => invokeOwnerAdminTool(tool.name,stripControlArguments(args),authContext))
+        : await invokeOwnerAdminTool(tool.name, stripControlArguments(args), authContext)
       : await invokeGatewayTool(tool.name, args, context);
     await recordToolCall({
       context: requestContext,
@@ -209,8 +198,10 @@ function toolResult(result) {
 }
 
 function toolError(error) {
+  const details = { error: error.message, ...(error.details || {}) };
   return {
-    content: [{ type: 'text', text: JSON.stringify({ error: error.message }) }],
+    content: [{ type: 'text', text: JSON.stringify(details) }],
+    structuredContent: details,
     isError: true,
   };
 }

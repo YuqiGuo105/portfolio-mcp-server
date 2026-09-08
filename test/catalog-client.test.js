@@ -164,7 +164,7 @@ test('admin MCP lists role-scoped catalog tools and blocks unconfirmed writes', 
     assert.equal(published.annotations.destructiveHint, true);
     assert.equal(published.annotations.idempotentHint, true);
 
-    const result = await client.callTool({ name: writeTool.name, arguments: { contentId: 42 } });
+    const result = await client.callTool({ name: writeTool.name, arguments: { contentId: 42, _idempotencyKey: 'test-intent-42' } });
     assert.equal(result.isError, true);
     assert.match(result.content[0].text, /confirmation is required/i);
   } finally {

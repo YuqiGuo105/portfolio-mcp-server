@@ -4,11 +4,11 @@
  *
  * Tool flow:
  *   list_alert_rules / get_alert_rule / list_alert_incidents → READ, no side effects
- *   prepare_alert_rule_change → READ, validates + returns diff preview
+ *   prepare_alert_rule_change → WRITE, persists a diff preview
  *   apply_alert_rule_change → WRITE, consumes changeId, idempotent
  */
 
-import { invokeGatewayTool } from './gateway-client.js';
+import { invokeGatewayTool, invocationForTool } from './gateway-client.js';
 import { z } from 'zod';
 
 const ADMIN_READ_ANNOTATIONS = {
@@ -70,12 +70,13 @@ and whether any incidents are still pending notification. Filters are bounded se
 
   {
     name: 'prepare_alert_rule_change',
-    description: `Validate a proposed alert rule change and return a diff preview WITHOUT modifying any data.
+    description: `Validate a proposed alert rule change and persist a temporary diff preview without modifying any rule.
 Returns: changeId, before/after state, diff of changed fields, warnings, expected version, and expiry time.
 Supported actions: CREATE (new rule), UPDATE (modify fields), SET_ENABLED (enable/disable).
 The returned changeId must be passed to apply_alert_rule_change for execution.`,
     zodSchema: {
       action: z.enum(['CREATE', 'UPDATE', 'SET_ENABLED']).describe('Type of change'),
+      _idempotencyKey: z.string().min(8).max(200).describe('Stable key for this preview intent; reuse it on retries.'),
       ruleId: z.number().optional().describe('Required for UPDATE and SET_ENABLED'),
       patch: z.object({
         siteId: z.string().min(1).max(120).optional().describe('Required for CREATE; identifies the monitored site'),
@@ -91,7 +92,7 @@ The returned changeId must be passed to apply_alert_rule_change for execution.`,
       }).describe('Partial fields to change'),
       reason: z.string().min(3).max(500).describe('Human-readable reason for the change'),
     },
-    annotations: ADMIN_READ_ANNOTATIONS,
+    annotations: { ...ADMIN_WRITE_ANNOTATIONS, destructiveHint: false, idempotentHint: true },
     handler: async (args, context) => {
       const payload = {
         action: args.action,
@@ -100,7 +101,8 @@ The returned changeId must be passed to apply_alert_rule_change for execution.`,
         reason: args.reason,
         actor: context?.actor || 'mcp-admin',
       };
-      return await invokeGatewayTool('alerts.prepare_change', payload, context);
+      const invocation=invocationForTool({mode:'WRITE'}, {...payload,_idempotencyKey:args._idempotencyKey},context);
+      return await invokeGatewayTool('alerts.prepare_change',invocation.args,invocation.context);
     },
   },
 
@@ -111,9 +113,10 @@ The change must not be expired (5 min TTL) and is single-use. Requires an idempo
 Returns the final rule state with updated version number on success.`,
     zodSchema: {
       changeId: z.string().describe('Change token from prepare_alert_rule_change'),
-      idempotencyKey: z.string().describe('Unique key to prevent duplicate applies (e.g. UUID)'),
+      idempotencyKey: z.string().min(8).max(200).describe('Stable key to prevent duplicate applies (e.g. UUID); reuse on retry'),
+      _confirmed: z.literal(true).describe('Explicit user approval of the prepared change is required.'),
     },
-    annotations: ADMIN_WRITE_ANNOTATIONS,
+    annotations: { ...ADMIN_WRITE_ANNOTATIONS, idempotentHint: true },
     handler: async (args, context) => {
       return await invokeGatewayTool('alerts.apply_change', args, {
         ...context,

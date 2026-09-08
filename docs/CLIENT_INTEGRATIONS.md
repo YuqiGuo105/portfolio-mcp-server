@@ -115,6 +115,39 @@ administrator can revoke the client grant from Supabase Auth. Do not add this
 endpoint to the public plugin: administrator installation is intentionally an
 explicit local action.
 
+### Chat Agent diagnostics
+
+After deploying the agent diagnostics endpoint and gateway catalog, an account
+with the current `ADMIN` role can use:
+
+- `agent.search_runs`: find a question, session, conversation, or run.
+- `agent.get_run_diagnostics`: inspect a run's ordered events, source provenance,
+  model/prompt versions, timings, safety outcomes, and missing-record signals.
+
+These read-only tools are absent from the public endpoint and from Viewer,
+Editor, and Publisher tool lists. The same restrictions apply to direct tool
+calls, not just discovery. Each admin MCP HTTP request rechecks authorization;
+login alone does not grant permission. An unavailable authorization service
+fails closed. Diagnostics provide execution evidence and concise decision
+summaries, not hidden model reasoning. Use them to investigate and test proposed
+model or algorithm changes; they never modify production configuration.
+
+Example request after administrator login: "Find the run for the travel question,
+show which sources were retrieved and why the answer lacked evidence, then
+suggest a regression test. Do not change production settings."
+
+For an operator-run, read-only OAuth-to-database smoke test, use a real run UUID:
+
+```sh
+MCP_DIAGNOSTICS_RUN_ID=<run-uuid> node scripts/verify-agent-diagnostics.mjs
+```
+
+Open the printed authorization URL and approve the temporary verification client
+as an administrator. The script checks the unauthenticated 401 response, tool
+discovery, run search, and persisted diagnostics. Tokens stay in process memory;
+it does not replay the agent or modify content. Revoke the verification client
+grant in Supabase Auth when no longer needed.
+
 ## Verification
 
 After installation, ask the client to list tools or run a read-only query such

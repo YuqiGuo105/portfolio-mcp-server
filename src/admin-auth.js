@@ -33,6 +33,9 @@ export async function verifyAdminAuth(authorizationHeader) {
   }
   const token = authorizationHeader.slice(7);
   const payload = await verifySupabaseToken(token);
+  if (payload.is_anonymous === true || typeof payload.email !== 'string' || !payload.email.trim()) {
+    throw new AuthError(401, 'A signed-in account is required');
+  }
 
   const email = (payload.email || '').toLowerCase();
   const managedPrincipal = await resolveManagedPrincipal(authorizationHeader);
@@ -87,6 +90,7 @@ async function verifySupabaseToken(token) {
       }
       const result = await jwtVerify(token, new TextEncoder().encode(jwtSecret), {
         algorithms: ['HS256'],
+        requiredClaims: ['sub', 'exp'],
         ...(issuer ? { issuer } : {}),
         audience: 'authenticated',
       });
@@ -107,6 +111,7 @@ async function verifySupabaseToken(token) {
     }
     const result = await jwtVerify(token, jwks, {
       algorithms: ['RS256', 'ES256'],
+      requiredClaims: ['sub', 'exp'],
       issuer,
       audience: 'authenticated',
     });

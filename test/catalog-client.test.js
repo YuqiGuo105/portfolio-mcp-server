@@ -10,7 +10,7 @@ import {
   resetCatalogCacheForTest,
   toolsForPrincipal,
 } from '../src/catalog-client.js';
-import { createAdminServer } from '../src/index.js';
+import { createAdminServer, createServer } from '../src/index.js';
 
 const readTool = {
   name: 'admin.search_content',
@@ -43,6 +43,42 @@ const ownerTool = {
   name: 'admin.list_admin_users',
   requiredRole: 'ADMIN',
 };
+
+const diagnosticsTools = ['agent.search_runs', 'agent.get_run_diagnostics'].map(name => ({
+  ...readTool, name, requiredRole: 'ADMIN', parameters: [],
+}));
+
+test('private agent diagnostics are neither discoverable nor callable outside an admin session', async (t) => {
+  const originalFetch = globalThis.fetch;
+  t.after(() => { globalThis.fetch = originalFetch; });
+  let calls = 0;
+  globalThis.fetch = async (url, options) => {
+    assert.match(url, /\/api\/tools\/agent\./);
+    assert.equal(options.headers['X-Role'], 'ADMIN');
+    calls += 1;
+    return new Response(JSON.stringify({ found: true, events: [] }), { status: 200 });
+  };
+  for (const role of ['PUBLIC', 'VIEWER', 'EDITOR', 'PUBLISHER', 'ADMIN']) {
+    const server = role === 'PUBLIC' ? createServer() : await createAdminServer({
+      email: 'operator@example.com', role, owner: false,
+    }, async () => diagnosticsTools);
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: 'diagnostics-access-test', version: '1.0.0' });
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    try {
+      const names = (await client.listTools()).tools.map(tool => tool.name);
+      for (const tool of diagnosticsTools) {
+        assert.equal(names.includes(tool.name), role === 'ADMIN');
+        const result = await client.callTool({ name: tool.name, arguments: {} });
+        assert.equal(result.isError === true, role !== 'ADMIN');
+      }
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  }
+  assert.equal(calls, 2);
+});
 
 const careerTool = {
   ...readTool,

@@ -24,23 +24,37 @@ export const tools = [
     name: 'search_portfolio',
     description: 'Search across Yuqi\'s public portfolio, including projects, technical articles, life posts, and professional experience. Returns ranked results and groups them by content type.',
     zodSchema: {
-      query: z.string().min(1).describe('Search query, technology, architecture pattern, topic, company, or experience keyword'),
+      query: z.string().trim().min(1).max(300).describe('Search query, technology, architecture pattern, topic, company, or experience keyword'),
       types: z.array(z.enum(['PROJECT', 'BLOG', 'LIFE_BLOG', 'EXPERIENCE'])).min(1).max(4).optional()
         .describe('Optional content types to include; defaults to all public portfolio content'),
       limit: z.number().min(1).max(20).optional().describe('Maximum total results (1-20, default 12)'),
     },
     annotations: PUBLIC_ANNOTATIONS,
     handler: async (args) => {
-      const requestedTypes = args.types?.length ? new Set(args.types) : null;
-      const result = await invokeGatewayTool('admin.search_content', {
-        keyword: args.query,
-        limit: Math.min(args.limit ?? 12, 20),
-      });
-      const items = (result?.items ?? result?.content ?? [])
-        .map(sanitizeContentItem)
-        .filter(Boolean)
-        .filter(item => !requestedTypes || requestedTypes.has(normalizeContentType(item.type)));
-      return buildPortfolioSearchResult(args.query, items, args.limit ?? 12);
+      const requestedTypes = args.types?.length ? [...new Set(args.types)] : [undefined];
+      const limit = Math.max(1, Math.min(args.limit ?? 12, 20));
+      const items = new Map();
+      async function retrieve(keyword) {
+        // Apply type before the upstream limit; otherwise unrelated projects can hide article matches.
+        for (const sourceType of requestedTypes) {
+          const result = await invokeGatewayTool('admin.search_content', { keyword, sourceType, limit });
+          for (const raw of result?.items ?? result?.content ?? []) {
+            const item = sanitizeContentItem(raw);
+            if (!item || (sourceType && normalizeContentType(item.type) !== sourceType)) continue;
+            items.set(`${normalizeContentType(item.type)}:${item.id}`, item);
+          }
+        }
+      }
+      await retrieve(args.query);
+      const terms = searchTerms(args.query);
+      const fallback = items.size === 0 && terms.length > 1;
+      if (fallback) {
+        // Bounded OR fallback for mixed-language keywords, without a topic-specific synonym dictionary.
+        for (const term of terms) await retrieve(term);
+      }
+      return { ...buildPortfolioSearchResult(args.query, [...items.values()], limit),
+        searchMode: fallback ? 'keyword_union' : 'phrase',
+        ...(fallback ? { queryTerms: terms } : {}) };
     },
   },
 
@@ -222,7 +236,17 @@ function relevanceScore(query, item) {
   else if (tags.some(tag => tag.includes(needle))) score += 20;
   if (category.includes(needle)) score += 15;
   if (summary.includes(needle)) score += 10;
+  for (const term of searchTerms(query)) {
+    if (title.includes(term)) score += 8;
+    if (summary.includes(term)) score += 3;
+    if (tags.some(tag => tag.includes(term))) score += 5;
+  }
   return score;
+}
+
+function searchTerms(query) {
+  return [...new Set(String(query).toLowerCase().match(/[\p{L}\p{N}]+/gu) || [])]
+    .filter(term => term.length > 1).slice(0, 4);
 }
 
 function normalizeContentType(type) {

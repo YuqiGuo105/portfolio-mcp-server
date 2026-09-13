@@ -29,23 +29,23 @@ export async function verifyAdminAuth(authorizationHeader) {
     .map(e => e.trim().toLowerCase())
     .filter(Boolean);
   if (!authorizationHeader || !authorizationHeader.startsWith('Bearer ')) {
-    throw new AuthError(401, 'Missing or invalid Authorization header');
+    throw new AuthError(401, 'Missing or invalid Authorization header', 'session_required');
   }
   const token = authorizationHeader.slice(7);
   const payload = await verifySupabaseToken(token);
   if (payload.is_anonymous === true || typeof payload.email !== 'string' || !payload.email.trim()) {
-    throw new AuthError(401, 'A signed-in account is required');
+    throw new AuthError(401, 'A signed-in account is required', 'session_required');
   }
 
   const email = (payload.email || '').toLowerCase();
   const managedPrincipal = await resolveManagedPrincipal(authorizationHeader);
   if (managedPrincipal) {
     if (String(managedPrincipal.email || '').toLowerCase() !== email) {
-      throw new AuthError(403, 'Admin identity mismatch');
+      throw new AuthError(403, 'Admin identity mismatch', 'admin_access_denied');
     }
     const role = String(managedPrincipal.role || '').toUpperCase();
     if (!['EDITOR', 'PUBLISHER', 'ADMIN'].includes(role)) {
-      throw new AuthError(403, 'Invalid managed admin role');
+      throw new AuthError(403, 'Invalid managed admin role', 'admin_access_denied');
     }
     return {
       email,
@@ -55,11 +55,12 @@ export async function verifyAdminAuth(authorizationHeader) {
       permissions: Array.isArray(managedPrincipal.permissions) ? managedPrincipal.permissions : [],
       authSource: managedPrincipal.authSource || 'managed_admin',
       accessToken: token,
+      expiresAt: payload.exp,
     };
   }
 
   if (adminEmails.length === 0 || !adminEmails.includes(email)) {
-    throw new AuthError(403, 'Not an authorized admin: ' + email);
+    throw new AuthError(403, 'Not an authorized admin', 'admin_access_denied');
   }
   return {
     email,
@@ -69,6 +70,7 @@ export async function verifyAdminAuth(authorizationHeader) {
     permissions: ['admin.read', 'content.write', 'content.publish', 'operations.manage'],
     authSource: 'environment_fallback',
     accessToken: token,
+    expiresAt: payload.exp,
   };
 }
 
@@ -80,13 +82,13 @@ async function verifySupabaseToken(token) {
   try {
     algorithm = decodeProtectedHeader(token).alg;
   } catch {
-    throw new AuthError(401, 'Invalid access token');
+    throw new AuthError(401, 'Invalid access token', 'token_invalid');
   }
 
   try {
     if (algorithm === 'HS256') {
       if (!jwtSecret) {
-        throw new AuthError(500, 'SUPABASE_JWT_SECRET not configured');
+        throw new AuthError(500, 'Token verification is not configured', 'auth_configuration_error');
       }
       const result = await jwtVerify(token, new TextEncoder().encode(jwtSecret), {
         algorithms: ['HS256'],
@@ -98,10 +100,10 @@ async function verifySupabaseToken(token) {
     }
 
     if (!issuer) {
-      throw new AuthError(500, 'SUPABASE_AUTH_ISSUER not configured');
+      throw new AuthError(500, 'Token verification is not configured', 'auth_configuration_error');
     }
     if (!['RS256', 'ES256'].includes(algorithm)) {
-      throw new AuthError(401, 'Unsupported access token algorithm');
+      throw new AuthError(401, 'Unsupported access token algorithm', 'token_invalid');
     }
 
     let jwks = jwksByIssuer.get(issuer);
@@ -118,7 +120,11 @@ async function verifySupabaseToken(token) {
     return result.payload;
   } catch (error) {
     if (error instanceof AuthError) throw error;
-    throw new AuthError(401, 'Invalid or expired access token');
+    if (error.code === 'ERR_JWT_EXPIRED') throw new AuthError(401, 'Access token expired', 'session_expired');
+    if (error.code === 'ERR_JWKS_TIMEOUT' || (algorithm !== 'HS256' && error instanceof TypeError)) {
+      throw new AuthError(503, 'Token verification service unavailable', 'auth_verifier_unavailable');
+    }
+    throw new AuthError(401, 'Invalid access token', 'token_invalid');
   }
 }
 
@@ -134,21 +140,22 @@ async function resolveManagedPrincipal(authorizationHeader) {
       headers: { Authorization: authorizationHeader },
       signal: controller.signal,
     });
-    if (response.status === 401) throw new AuthError(401, 'Admin session expired');
-    if (response.status === 403) throw new AuthError(403, 'Admin access denied');
-    if (!response.ok) throw new AuthError(503, 'Admin authorization service unavailable');
+    if (response.status === 401) throw new AuthError(401, 'Admin session is no longer authorized', 'session_rejected');
+    if (response.status === 403) throw new AuthError(403, 'Admin access denied', 'admin_access_denied');
+    if (!response.ok) throw new AuthError(503, 'Admin authorization service unavailable', 'auth_service_unavailable');
     return await response.json();
   } catch (error) {
     if (error instanceof AuthError) throw error;
-    throw new AuthError(503, 'Admin authorization service unavailable');
+    throw new AuthError(503, 'Admin authorization service unavailable', 'auth_service_unavailable');
   } finally {
     clearTimeout(timer);
   }
 }
 
 export class AuthError extends Error {
-  constructor(statusCode, message) {
+  constructor(statusCode, message, code = 'authentication_failed') {
     super(message);
     this.statusCode = statusCode;
+    this.code = code;
   }
 }

@@ -1,23 +1,39 @@
 import http from 'node:http';
 import { build } from 'esbuild';
-import { SignJWT } from 'jose';
+import { SignJWT, jwtVerify } from 'jose';
 import { catalog, fixture } from './fixtures.mjs';
+import { createOAuthProbe } from '../src/connection-diagnostics.js';
 
 const port = Number(process.env.E2E_PORT || 3187);
 process.env.MCP_GATEWAY_URL = `http://127.0.0.1:${port + 1}`;
 process.env.MCP_GATEWAY_INTERNAL_TOKEN = 'test-workspace-gateway-key-123456789';
 process.env.SUPABASE_JWT_SECRET = 'test-workspace-auth-key-123456789';
-process.env.SUPABASE_AUTH_ISSUER = '';
-process.env.ADMIN_SERVICE_URL = '';
+process.env.SUPABASE_AUTH_ISSUER = 'https://auth.workspace.test/auth/v1';
+process.env.ADMIN_SERVICE_URL = process.env.MCP_GATEWAY_URL;
 process.env.ADMIN_ALLOWED_EMAILS = 'admin@example.test';
 const { createHttpServer } = await import('../src/index.js');
 const token = await new SignJWT({ email: 'admin@example.test' }).setProtectedHeader({ alg: 'HS256' }).setSubject('admin-fixture')
-  .setAudience('authenticated').setExpirationTime('1h').sign(new TextEncoder().encode(process.env.SUPABASE_JWT_SECRET));
+  .setAudience('authenticated').setIssuer(process.env.SUPABASE_AUTH_ISSUER).setExpirationTime('1h').sign(new TextEncoder().encode(process.env.SUPABASE_JWT_SECRET));
+const expired = await new SignJWT({ email: 'admin@example.test' }).setProtectedHeader({ alg: 'HS256' }).setSubject('admin-fixture')
+  .setAudience('authenticated').setIssuer(process.env.SUPABASE_AUTH_ISSUER).setExpirationTime(Math.floor(Date.now() / 1000) - 10).sign(new TextEncoder().encode(process.env.SUPABASE_JWT_SECRET));
+const outsider = await new SignJWT({ email: 'outsider@example.test' }).setProtectedHeader({ alg: 'HS256' }).setSubject('outsider')
+  .setAudience('authenticated').setIssuer(process.env.SUPABASE_AUTH_ISSUER).setExpirationTime('1h').sign(new TextEncoder().encode(process.env.SUPABASE_JWT_SECRET));
 let mode = '', writes = 0;
 const receipts = new Map();
 async function body(req) { let s = ''; for await (const c of req) { s += c; if (s.length > 1e6) throw new Error('Too large'); } return s ? JSON.parse(s) : {}; }
 function json(res, data, status = 200) { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(data)); }
 const backend = http.createServer(async (req, res) => {
+  if (req.url === '/api/admin/users/me') {
+    if (mode === 'auth-down') return json(res, {}, 503);
+    const verified = await jwtVerify(req.headers.authorization.slice(7), new TextEncoder().encode(process.env.SUPABASE_JWT_SECRET));
+    if (verified.payload.email !== 'admin@example.test') return json(res, {}, 403);
+    return json(res, { email: 'admin@example.test', role: 'ADMIN', owner: true });
+  }
+  if (req.url.startsWith('/.well-known/')) return json(res, {
+    issuer: process.env.SUPABASE_AUTH_ISSUER, authorization_endpoint: `${process.env.SUPABASE_AUTH_ISSUER}/authorize`,
+    token_endpoint: `${process.env.SUPABASE_AUTH_ISSUER}/token`, registration_endpoint: `${process.env.SUPABASE_AUTH_ISSUER}/register`,
+    response_types_supported: ['code'], code_challenge_methods_supported: ['S256'],
+  });
   if (req.url === '/api/tools') return json(res, catalog);
   const name = decodeURIComponent(req.url.split('/')[3] || '');
   const args = await body(req);
@@ -31,7 +47,8 @@ const backend = http.createServer(async (req, res) => {
   return json(res, fixture(name, args));
 });
 await new Promise(resolve => backend.listen(port + 1, '127.0.0.1', resolve));
-const mcp = createHttpServer();
+const diagnosticsProbe = createOAuthProbe({ fetchImpl: (url, init) => fetch(`http://127.0.0.1:${port + 1}${new URL(url).pathname}`, init) });
+const mcp = createHttpServer({ diagnosticsProbe });
 await new Promise(resolve => mcp.listen(port + 2, '127.0.0.1', resolve));
 const bundle = await build({ entryPoints: ['e2e/host.js'], bundle: true, format: 'esm', write: false });
 let requestId = 0;
@@ -46,6 +63,16 @@ async function rpc(method, params) {
 await rpc('initialize', { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'e2e', version: '1' } });
 const host = http.createServer(async (req, res) => {
   try {
+    if (req.url.startsWith('/host/diagnostics')) {
+      const url = new URL(req.url, 'http://localhost');
+      const auth = { valid: token, expired, invalid: `${token}tampered`, outsider }[url.searchParams.get('session')];
+      const upstream = await fetch(`http://127.0.0.1:${port + 2}/mcp/diagnostics?surface=${url.searchParams.get('surface') || 'admin'}&locale=zh`, {
+        method: req.method, headers: { 'Content-Type': 'application/json', ...(auth ? { Authorization: `Bearer ${auth}` } : {}) },
+        ...(req.method === 'POST' ? { body: JSON.stringify(await body(req)) } : {}),
+      });
+      res.writeHead(upstream.status, { 'Content-Type': 'application/json', 'Cache-Control': upstream.headers.get('cache-control') || 'no-store' });
+      return res.end(await upstream.text());
+    }
     if (req.url === '/host/rpc') { const r = await body(req); return json(res, await rpc(r.method, r.params)); }
     if (req.url === '/host/control') { const data = await body(req); mode = data.mode || ''; writes = 0; receipts.clear(); return json(res, {}); }
     if (req.url === '/host/state') return json(res, { writes, keys: [...receipts.keys()] });

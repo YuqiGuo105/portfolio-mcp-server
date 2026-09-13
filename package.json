@@ -1,6 +1,6 @@
 {
   "name": "portfolio-mcp-server",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "MCP Server for Yuqi's Portfolio — public read-only tools for ChatGPT, Copilot, and Claude",
   "type": "module",
   "main": "src/index.js",
@@ -10,7 +10,7 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "test": "node --test",
-    "check": "node --check src/index.js && node --check src/catalog-client.js && node --check src/admin-auth.js && node --check src/oauth-resource.js && node --check src/workspace.js && node --check web/workspace.js && node --check scripts/verify-workspace-live.mjs && node scripts/validate-client-integrations.mjs"
+    "check": "node --check src/index.js && node --check src/catalog-client.js && node --check src/admin-auth.js && node --check src/oauth-resource.js && node --check src/workspace.js && node --check src/connection-diagnostics.js && node --check src/tool-registry.js && node --check web/workspace.js && node --check scripts/verify-workspace-live.mjs && node --check scripts/check-connection.mjs && node scripts/validate-client-integrations.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/ext-apps": "1.1.2",

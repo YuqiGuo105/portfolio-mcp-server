@@ -25,6 +25,8 @@ import { pathToFileURL } from 'node:url';
 import { operationContext, recordToolCall } from './operation-events.js';
 import { analyzeVisitorTraffic } from './visitor-traffic-analysis.js';
 import { registerWorkspace } from './workspace.js';
+import { createToolRegistry } from './tool-registry.js';
+import { registerConnectionCheck, handleConnectionDiagnostics } from './connection-diagnostics.js';
 import {
   annotationsForTool,
   inputSchemaForTool,
@@ -40,7 +42,7 @@ import {
 } from './oauth-resource.js';
 
 const PORT = Number(process.env.PORT) || 8080;
-const SERVER_VERSION = '1.2.0';
+const SERVER_VERSION = '1.3.0';
 
 const TOOL_INVOCATION_INSTRUCTIONS = [
   'Invoke tools only through the callable returned by the client\'s current tool registry.',
@@ -62,9 +64,10 @@ export function createServer(requestContext) {
   }, {
     instructions: TOOL_INVOCATION_INSTRUCTIONS,
   });
+  const registry = createToolRegistry(srv);
 
   for (const tool of tools) {
-    srv.registerTool(
+    registry.registerTool(
       tool.name,
       {
         description: tool.description,
@@ -87,12 +90,13 @@ export function createServer(requestContext) {
     );
   }
 
+  registerConnectionCheck(registry, { surface: 'public', requestContext });
   return srv;
 }
 
 // ── Factory: admin MCP server (authenticated, includes write tools) ──────
 
-export async function createAdminServer(authContext, catalogLoader = loadToolCatalog) {
+export async function createAdminServer(authContext, catalogLoader = loadToolCatalog, { diagnosticsProbe } = {}) {
   authContext.actor = authContext.actor || `mcp-server:admin:${authContext.email}`;
   const requestContext = authContext.operationContext;
   const srv = new McpServer({
@@ -102,10 +106,11 @@ export async function createAdminServer(authContext, catalogLoader = loadToolCat
   }, {
     instructions: TOOL_INVOCATION_INSTRUCTIONS,
   });
+  const registry = createToolRegistry(srv);
 
   // Include public read tools
   for (const tool of tools) {
-    srv.registerTool(
+    registry.registerTool(
       tool.name,
       {
         description: tool.description,
@@ -128,7 +133,7 @@ export async function createAdminServer(authContext, catalogLoader = loadToolCat
 
   // Admin-only tools
   for (const tool of adminTools) {
-    srv.registerTool(
+    registry.registerTool(
       tool.name,
       {
         description: tool.description,
@@ -150,10 +155,10 @@ export async function createAdminServer(authContext, catalogLoader = loadToolCat
   }
 
   const catalog = toolsForPrincipal(await catalogLoader(), authContext);
-  registerWorkspace(srv, authContext, catalog,
+  registerWorkspace(registry, authContext, catalog,
     (tool, args) => executeCatalogTool(tool, args, authContext, requestContext));
   for (const tool of catalog) {
-    srv.registerTool(
+    registry.registerTool(
       tool.name,
       {
         description: `${tool.description} [${tool.mode}; risk=${tool.riskLevel}; role=${tool.requiredRole}]`,
@@ -164,6 +169,7 @@ export async function createAdminServer(authContext, catalogLoader = loadToolCat
     );
   }
 
+  registerConnectionCheck(registry, { surface: 'admin', principal: authContext, requestContext, probe: diagnosticsProbe });
   return srv;
 }
 
@@ -226,9 +232,15 @@ function toolError(error) {
 
 // ── HTTP Server with Streamable HTTP Transport ───────────────────────────
 
-export function createHttpServer() {
+export function createHttpServer({ diagnosticsProbe } = {}) {
   return http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
+
+  if (url.pathname === '/mcp/diagnostics') {
+    await handleConnectionDiagnostics(req, res, { createPublic: createServer, createAdmin: principal => createAdminServer(principal, undefined, { diagnosticsProbe }),
+      verifyAuth: verifyAdminAuth, probe: diagnosticsProbe });
+    return;
+  }
 
   // Health check
   if (url.pathname === '/health' || url.pathname === '/') {
@@ -275,7 +287,7 @@ export function createHttpServer() {
       const authHeader = req.headers['authorization'] || null;
       const authContext = await verifyAdminAuth(authHeader);
       authContext.operationContext = operationContext(req, `mcp-server:admin:${authContext.email || 'unknown'}`);
-      const srv = await createAdminServer(authContext);
+      const srv = await createAdminServer(authContext, undefined, { diagnosticsProbe });
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // Stateless
       });
@@ -288,7 +300,7 @@ export function createHttpServer() {
           headers['WWW-Authenticate'] = bearerChallenge();
         }
         res.writeHead(err.statusCode, headers);
-        res.end(JSON.stringify({ error: err.message }));
+        res.end(JSON.stringify({ error: err.message, code: err.code }));
       } else {
         console.error('Admin MCP request error:', err.message);
         if (!res.headersSent) {

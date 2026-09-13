@@ -1,23 +1,31 @@
 {
   "name": "portfolio-mcp-server",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "MCP Server for Yuqi's Portfolio — public read-only tools for ChatGPT, Copilot, and Claude",
   "type": "module",
   "main": "src/index.js",
   "scripts": {
+    "build": "node scripts/build-workspace.mjs",
+    "test:e2e": "playwright test",
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "test": "node --test",
-    "check": "node --check src/index.js && node --check src/catalog-client.js && node --check src/admin-auth.js && node --check src/oauth-resource.js && node scripts/validate-client-integrations.mjs"
+    "check": "node --check src/index.js && node --check src/catalog-client.js && node --check src/admin-auth.js && node --check src/oauth-resource.js && node --check src/workspace.js && node --check web/workspace.js && node --check scripts/verify-workspace-live.mjs && node scripts/validate-client-integrations.mjs"
   },
   "dependencies": {
+    "@modelcontextprotocol/ext-apps": "1.1.2",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "isbot": "5.2.2",
     "jose": "^6.2.3",
+    "lucide": "0.468.0",
     "zod": "^4.4.3"
   },
   "engines": {
     "node": ">=20"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "@playwright/test": "1.55.1",
+    "esbuild": "0.25.12"
+  }
 }

@@ -81,6 +81,27 @@ before answering; zero keyword results alone do not prove a fact is absent.
 
 ## Admin Control Plane
 
+### Visual workspace
+
+Connect `https://www.yuqi.site/mcp/admin`, sign in with a managed administrator
+account, and ask **"Open the admin workspace"**. MCP Apps-capable clients can
+display visitor timelines, operation status, retry reviews, and knowledge
+records inside the conversation. Text-only clients receive a summary and a
+link to the protected admin console.
+
+- **Visitor activity:** filter by time, country, city, or search text; inspect
+  session events with identifiers collapsed by default. Admin traffic is excluded.
+- **Operations:** inspect durable transitions and failed tasks. A retry requires
+  a current-state review and an explicit confirmation; uncertain outcomes are
+  marked for verification, never automatically retried.
+- **Knowledge:** browse and read the existing knowledge database, including
+  source content, revision, and indexing status. This view does not edit records.
+
+These tools and their UI resource are **ADMIN-only** and are absent from the
+public endpoint. The UI uses the standard MCP Apps bridge and ships as a
+self-contained resource, without browser-held backend credentials or external
+asset requests. See [workspace security and verification](docs/ADMIN_WORKSPACE.md).
+
 The Admin endpoint discovers its capabilities from `GET /api/tools` on the
 internal MCP gateway. It does not maintain a second hard-coded copy of backend
 operations. The current catalog covers these domains:
@@ -113,8 +134,9 @@ MCP client
 
 Write tools publish MCP annotations (`readOnlyHint`, `destructiveHint`,
 `idempotentHint`, `openWorldHint`) so supporting clients can present the right
-approval experience. An `_idempotencyKey` can be supplied by the client; the
-server generates one when omitted. A tool marked `confirmRequired` will not run
+approval experience. Writes require a stable `_idempotencyKey`, reused with the
+same arguments on retry. The visual workspace issues that key with its signed
+review ticket. A tool marked `confirmRequired` will not run
 unless `_confirmed=true`, and the internal gateway independently enforces the
 same risk gate.
 
@@ -154,6 +176,7 @@ Clone and install the server:
 git clone https://github.com/YuqiGuo105/portfolio-mcp-server.git
 cd portfolio-mcp-server
 npm ci
+npm run build
 ```
 
 Set the required gateway configuration:

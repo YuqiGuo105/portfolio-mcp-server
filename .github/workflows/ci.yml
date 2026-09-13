@@ -22,8 +22,17 @@ jobs:
       - name: Static checks
         run: npm run check
 
+      - name: Build workspace
+        run: npm run build
+
       - name: Unit and MCP protocol tests
         run: npm test
+
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Workspace browser and protocol E2E
+        run: npm run test:e2e
 
       - name: Verify server starts
         run: |

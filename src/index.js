@@ -24,6 +24,7 @@ import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { operationContext, recordToolCall } from './operation-events.js';
 import { analyzeVisitorTraffic } from './visitor-traffic-analysis.js';
+import { registerWorkspace } from './workspace.js';
 import {
   annotationsForTool,
   inputSchemaForTool,
@@ -39,7 +40,7 @@ import {
 } from './oauth-resource.js';
 
 const PORT = Number(process.env.PORT) || 8080;
-const SERVER_VERSION = '1.0.1';
+const SERVER_VERSION = '1.2.0';
 
 const TOOL_INVOCATION_INSTRUCTIONS = [
   'Invoke tools only through the callable returned by the client\'s current tool registry.',
@@ -149,6 +150,8 @@ export async function createAdminServer(authContext, catalogLoader = loadToolCat
   }
 
   const catalog = toolsForPrincipal(await catalogLoader(), authContext);
+  registerWorkspace(srv, authContext, catalog,
+    (tool, args) => executeCatalogTool(tool, args, authContext, requestContext));
   for (const tool of catalog) {
     srv.registerTool(
       tool.name,

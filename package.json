@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "isbot": "5.2.2",
     "jose": "^6.2.3",
     "zod": "^4.4.3"
   },

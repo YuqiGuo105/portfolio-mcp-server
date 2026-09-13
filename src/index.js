@@ -23,6 +23,7 @@ import { verifyAdminAuth, AuthError } from './admin-auth.js';
 import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { operationContext, recordToolCall } from './operation-events.js';
+import { analyzeVisitorTraffic } from './visitor-traffic-analysis.js';
 import {
   annotationsForTool,
   inputSchemaForTool,
@@ -175,13 +176,14 @@ async function executeCatalogTool(tool, rawArgs, authContext, requestContext) {
         ? await invokeOwnerWrite(tool.name,args,context,() => invokeOwnerAdminTool(tool.name,stripControlArguments(args),authContext))
         : await invokeOwnerAdminTool(tool.name, stripControlArguments(args), authContext)
       : await invokeGatewayTool(tool.name, args, context);
+    const response = analyzeVisitorTraffic(tool.name, result, authContext);
     await recordToolCall({
       context: requestContext,
       toolName: tool.name,
       status: 'completed',
       durationMs: Date.now() - startedAt,
     });
-    return toolResult(result);
+    return toolResult(response);
   } catch (error) {
     await recordToolCall({
       context: requestContext,
@@ -265,6 +267,7 @@ export function createHttpServer() {
 
   // Admin MCP endpoint (authenticated)
   if (url.pathname === '/mcp/admin') {
+    res.setHeader('Cache-Control', 'no-store');
     try {
       const authHeader = req.headers['authorization'] || null;
       const authContext = await verifyAdminAuth(authHeader);

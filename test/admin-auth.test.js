@@ -87,3 +87,15 @@ test('fails closed when managed authorization is unavailable', async (t) => {
     error => error.statusCode === 503
   );
 });
+test('diagnostic auth codes distinguish expiry, tampering and verifier outage', async t => {
+  process.env.SUPABASE_JWT_SECRET = secret;
+  delete process.env.SUPABASE_AUTH_ISSUER;
+  const originalFetch = globalThis.fetch;
+  t.after(() => { globalThis.fetch = originalFetch; });
+  await assert.rejects(verifyAdminAuth(null), e => e.code === 'session_required');
+  await assert.rejects(verifyAdminAuth('Bearer malformed'), e => e.code === 'token_invalid');
+  await assert.rejects(verifyAdminAuth(`Bearer ${await tokenFor('owner@example.com', {}, Math.floor(Date.now() / 1000) - 10)}`), e => e.code === 'session_expired');
+  process.env.ADMIN_SERVICE_URL = 'https://admin.test';
+  globalThis.fetch = async () => new Response(null, { status: 503 });
+  await assert.rejects(verifyAdminAuth(`Bearer ${await tokenFor('owner@example.com')}`), e => e.statusCode === 503 && e.code === 'auth_service_unavailable');
+});

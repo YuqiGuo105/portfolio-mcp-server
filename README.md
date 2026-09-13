@@ -38,7 +38,7 @@ adapters, response sanitization, and auditable operational state.
 
 This service exposes two deliberately separate trust boundaries:
 
-- `/mcp` is the anonymous public edge. Its six curated tools are always read-only and sanitized.
+- `/mcp` is the anonymous public edge. Its curated tools are always read-only and sanitized.
 - `/mcp/admin` is the authenticated control plane. It verifies the Supabase JWT, resolves the managed role and owner capability from admin-service, then dynamically registers only tools allowed for that principal.
 
 Production boundaries:
@@ -68,6 +68,7 @@ therefore loses both UI and MCP access without a separate permission list.
 | `get_profile` | Read owner-approved public profile evidence, work experience, and verified public profile links | None |
 | `get_social_profiles` | Read the exact owner-configured GitHub, LeetCode, and Instagram URLs | None |
 | `search_knowledge` | Multilingual semantic search over published content and approved public answers | `query`, optional `limit` |
+| `connection.check` | Read-only connection, tool-name, and schema diagnostics; admin connection also checks verified session and OAuth discovery | Optional `locale`, `client`, and up to 10 sample `invocations` |
 
 All tools are read-only and non-destructive. Search results are limited to 20 items. Responses omit internal IDs, audit data, indexing state, raw HTML, and other private implementation fields; long content is truncated to a configurable maximum.
 
@@ -80,6 +81,20 @@ reported as a tool error, never as an empty education record. Read returned evid
 before answering; zero keyword results alone do not prove a fact is absent.
 
 ## Admin Control Plane
+
+### Connection self-check
+
+Ask the connected client to **check the MCP connection**, or invoke
+`connection.check` with `locale: "zh"` for a Chinese report. It distinguishes
+expired sessions, invalid tokens, insufficient permissions, authentication
+outages, stale tool names, and incompatible arguments. Samples are validated
+against the registered schemas and **never executed**.
+
+If login itself is broken, use the MCP service's read-only
+`/mcp/diagnostics?surface=admin` endpoint or the
+[connection-check CLI](docs/CONNECTION_DIAGNOSTICS.md). Neither requires a working
+MCP session to explain an authentication failure. Private tool details remain
+withheld until authorization succeeds.
 
 ### Visual workspace
 

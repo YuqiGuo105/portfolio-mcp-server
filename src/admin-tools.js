@@ -73,6 +73,8 @@ and whether any incidents are still pending notification. Filters are bounded se
     description: `Validate a proposed alert rule change and persist a temporary diff preview without modifying any rule.
 Returns: changeId, before/after state, diff of changed fields, warnings, expected version, and expiry time.
 Supported actions: CREATE (new rule), UPDATE (modify fields), SET_ENABLED (enable/disable).
+Use UPDATE with patch.filters.bot=EXCLUDE to exclude detected bots and unknown classifications while preserving other settings.
+Non-bot classification is not proof of a human visitor. Omitted filters preserve the existing policy.
 The returned changeId must be passed to apply_alert_rule_change for execution.`,
     zodSchema: {
       action: z.enum(['CREATE', 'UPDATE', 'SET_ENABLED']).describe('Type of change'),
@@ -89,7 +91,10 @@ The returned changeId must be passed to apply_alert_rule_change for execution.`,
         comparator: z.enum(['>=', '<=']).optional(),
         cooldownSeconds: z.number().int().min(60).optional(),
         enabled: z.boolean().optional(),
-      }).describe('Partial fields to change'),
+        filters: z.object({
+          bot: z.enum(['ALL', 'EXCLUDE', 'ONLY']).describe('ALL: all traffic; EXCLUDE: is_bot=false only; ONLY: is_bot=true only'),
+        }).strict().optional(),
+      }).strict().describe('Partial fields to change; nested filters.bot controls traffic classification'),
       reason: z.string().min(3).max(500).describe('Human-readable reason for the change'),
     },
     annotations: { ...ADMIN_WRITE_ANNOTATIONS, destructiveHint: false, idempotentHint: true },

@@ -41,3 +41,16 @@ test('incident query bounds prevent unbounded admin reads', () => {
   assert.equal(schema.limit.safeParse(200).success, true);
   assert.equal(schema.limit.safeParse(201).success, false);
 });
+
+test('nested bot policy is preserved and malformed filters cannot silently become all traffic', () => {
+  const schema = tool('prepare_alert_rule_change').zodSchema.patch;
+  for (const bot of ['ALL', 'EXCLUDE', 'ONLY']) {
+    assert.deepEqual(schema.parse({ filters: { bot } }), { filters: { bot } });
+  }
+  for (const patch of [
+    { filters: {} }, { filters: { bot: null } }, { filters: { bot: 'HUMAN' } },
+    { filters: { bot: 'EXCLUDE', excludeBots: true } }, { excludeBots: true },
+  ]) assert.equal(schema.safeParse(patch).success, false);
+  assert.deepEqual(schema.parse({ threshold: 2 }), { threshold: 2 });
+  assert.equal(tool('apply_alert_rule_change').zodSchema._confirmed.safeParse(false).success, false);
+});

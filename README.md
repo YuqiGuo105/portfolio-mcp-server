@@ -34,6 +34,20 @@ what succeeded, what failed, and what needs reconciliation.
 
 **Stack:** Node.js &middot; MCP SDK &middot; Zod &middot; OAuth/JWT &middot; Java/Spring backend services
 
+### My Engineering Contribution
+
+Designed and delivered the **public and authenticated MCP integration**, connecting
+client-facing tools to the platform's service boundaries. The work spans **typed
+tool contracts, identity and role enforcement, confirmation-gated dispatch,
+durable operation tracking, and structured audit correlation**, plus client
+setup, connection diagnostics, and an embedded administrator workspace.
+
+The engineering focus is not simply exposing endpoints to an LLM. It is making
+each request **permission-aware, traceable, and recoverable** while keeping
+private data separate from public discovery. The architecture below identifies
+which responsibilities live in this edge repository and which belong to the
+gateway and domain services.
+
 ## Public Edition
 
 ### Explore the work directly from an AI conversation
@@ -66,6 +80,19 @@ not private resumes, administrator records, or privileged actions.
 Search projects and articles, retrieve profile and social links, inspect stored
 architecture, or check the connection. Use live tool discovery for the current
 catalog; the screenshot captures an earlier release.
+
+| Capability | Tools | Evidence returned |
+| --- | --- | --- |
+| **Discover relevant work** | `search_portfolio`, `search_projects`, `get_project` | Projects, descriptions, and canonical source links. |
+| **Explore system design** | `get_project_architecture` | Authored diagrams and component descriptions. |
+| **Read published writing** | `search_articles`, `get_article` | Technical articles and life writing with source context. |
+| **Understand the background** | `get_profile`, `get_social_profiles` | Approved professional facts and configured social profiles. |
+| **Retrieve supporting knowledge** | `search_knowledge` | Published content and explicitly approved public answer evidence. |
+| **Diagnose a connection** | `connection.check` | Readable tool-name and argument-schema diagnostics, without executing sample operations. |
+
+Public retrieval excludes private candidate memory and administrative records.
+Evidence availability is explicit: a search miss is not proof that a fact is
+false, and retrieval failures must not masquerade as an empty profile.
 
 [Client setup and Codex plugin installation](docs/CLIENT_INTEGRATIONS.md)
 
@@ -108,12 +135,27 @@ than reusing an old consent link.
 </p>
 <p align="center"><sub>Claude after administrator authorization. Available tools depend on the managed role; screenshot counts are historical.</sub></p>
 
-| Workflow | What the administrator can do |
+### Administrative Capabilities
+
+The protected catalog spans the following workflows. Each tool retains its own
+role, validation, and confirmation policy; connecting does not grant every
+capability listed here.
+
+| Workflow | What an authorized operator can do |
 | --- | --- |
-| **Investigate** | Review visitor sessions, alert evidence, failed operations, and delivery status. |
-| **Maintain** | Manage knowledge and content through validated, role-scoped tools. |
-| **Debug** | Inspect Chat Agent questions, final answers, retrieval evidence, timings, and execution events. |
-| **Recover** | Review current operation state and explicitly confirm supported retry actions. |
+| **Content and knowledge** | Find, create, update, and delete permitted records; publish content and trigger Search/RAG reindexing. |
+| **Versions and audit** | Inspect content versions, compare changes, and request a governed rollback; trace recorded operations. |
+| **Visitor intelligence** | Inspect authorized event and session details, rule matches, and automation signals. Non-bot classification is not proof of a human visitor. |
+| **Alerts and subscriptions** | Preview and test visitor rules, review prepared changes, and manage supported event subscriptions. |
+| **Chat Agent diagnostics** | Search conversations and runs; inspect questions, final answers, retrieval evidence, timings, and execution events. ADMIN-only diagnostics do not expose hidden model reasoning. |
+| **Delivery and recovery** | Inspect notification state, failed operations, and timelines; explicitly confirm supported recovery actions. |
+| **Health and cost** | Query platform diagnostics, usage summaries, and cost explanations; manage permitted budget settings. |
+| **Private application support** | Manage owner-controlled candidate memory and active resume versions through career-service policy. These are not public profile tools. |
+
+Tool discovery is filtered by the authenticated role, and invocation checks the
+permission again. Workspace and agent diagnostics require `ADMIN`; owner-account
+management has an additional owner-only boundary. Use the exact names returned
+by the client's live discovery, rather than inventing a `Portfolio:...` alias.
 
 In MCP Apps-capable clients, the **admin workspace** presents timelines and
 records interactively. Other clients receive text results and a protected console
@@ -137,6 +179,26 @@ closed. These controls support recovery; they do **not** imply global exactly-on
 execution across every service.
 
 [Read the durable operations and recovery contract](docs/DURABLE_OPERATIONS.md)
+
+### What Happens When a Request Fails?
+
+The internal gateway claims a database-backed operation before write dispatch.
+An idempotency key is scoped to the actor and tool: retries preserve the key and
+arguments, conflicting reuse is rejected, and completed requests can return
+their saved result. State survives a client disconnect or service restart.
+
+| Outcome | Client behavior |
+| --- | --- |
+| **Running** | Query status; do not issue a duplicate write. |
+| **Succeeded** | Read the stored tool result; check asynchronous indexing or delivery separately. |
+| **Retryable before dispatch** | Respect backoff and retry the same intent with the same key and arguments. |
+| **Final failure** | Inspect the rejection before preparing a corrected request. |
+| **Unknown outcome** | Reconcile downstream state. A timeout is not permission to replay a potentially completed action. |
+
+Structured operation timelines support investigation across service boundaries.
+Audit records avoid raw private arguments. Backend retries and replay follow the
+owning service's transaction and recovery rules; SMTP acceptance, for example,
+does not establish inbox delivery.
 
 ## Architecture
 
@@ -166,6 +228,23 @@ not the lifetime of an MCP connection.
 | **Operations and evidence** | [Event correlation](src/operation-events.js) &middot; [Recovery contract](docs/DURABLE_OPERATIONS.md) |
 | **Setup and verification** | [Local development and tests](docs/DEVELOPMENT.md) &middot; [Client integrations](docs/CLIENT_INTEGRATIONS.md) |
 | **Wider platform** | [Portfolio](https://github.com/YuqiGuo105/Portfolio) &middot; [Admin service](https://github.com/YuqiGuo105/portfolio-admin-service) &middot; [Analytics](https://github.com/YuqiGuo105/portfolio-analytics-platform) |
+
+## Verification Scope
+
+Verification combines **edge contract tests**, **backend recovery tests**, and
+**browser-based MCP Apps tests**. The documented coverage includes role isolation,
+schema rejection, duplicate/conflicting writes, uncertain outcomes, audit
+redaction, filters, pagination, explicit retry confirmation, mobile scrolling,
+and theme changes.
+
+The browser suite uses the MCP Apps bridge and real HTTP/auth/catalog transport
+against an isolated fixture gateway. Separately authorized, read-only live checks
+can validate real backend data. The screenshots demonstrate connected Claude and
+Codex interfaces; they are not a guarantee of every client version's behavior or
+a substitute for end-to-end verification.
+
+See [test commands](docs/DEVELOPMENT.md), [workspace verification](docs/ADMIN_WORKSPACE.md#verification),
+and [durable-operation verification](docs/DURABLE_OPERATIONS.md#verification).
 
 <details>
 <summary><strong>Scope, screenshots, and licensing</strong></summary>

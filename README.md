@@ -1,296 +1,278 @@
-# Portfolio MCP Control Plane
+<p align="center">
+  <img src="plugins/yuqi-portfolio/assets/icon.png" alt="Yuqi Portfolio" width="72" />
+</p>
+<h1 align="center">Portfolio MCP Gateway</h1>
+<p align="center">
+  <strong>Public knowledge. Protected operations. Traceable execution.</strong><br />
+  An MCP access layer for Yuqi Guo's multi-service portfolio platform.
+</p>
+<p align="center">
+  <a href="https://www.yuqi.site/mcp-guide">Connection Guide</a> &middot;
+  <a href="#public-edition">Public Edition</a> &middot;
+  <a href="#administrator-edition">Administrator Edition</a> &middot;
+  <a href="#architecture">Architecture</a> &middot;
+  <a href="#development">Development</a>
+</p>
 
-A dual-boundary [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for [Yuqi Guo's portfolio](https://www.yuqi.site). Public clients receive a small, sanitized read-only surface. Authenticated administrators receive a role-scoped control plane generated from the platform's canonical internal tool catalog.
+Connect an AI client to published portfolio knowledge, or authorize it to operate
+the platform through **schema-validated tools, managed RBAC, confirmation-gated
+writes, durable operation tracking, and structured audit records**.
 
-Both endpoints use stateless Streamable HTTP and support clients such as ChatGPT, Gemini, Claude, GitHub Copilot, and Cursor. Business operations remain owned by their backend services; this edge provides discovery, authentication, policy metadata, invocation and audit correlation.
+This repository implements the **Node.js MCP edge and client integration**. The
+[internal Java gateway](https://github.com/YuqiGuo105/portfolio-ai-platform) and
+owning backend services enforce domain policy and persist operational state.
+The edge is stateless; conversation persistence belongs to the AI Agent platform,
+not an in-memory MCP connection.
 
-## Use Yuqi Portfolio
+## Two Separate Access Boundaries
 
-In Codex or ChatGPT, open **Plugins**, choose **Yuqi Portfolio**, and ask a
-question such as:
-
-- `Show me Yuqi's strongest backend projects.`
-- `Explain the portfolio platform architecture.`
-- `Find Yuqi's writing about distributed systems.`
-
-The public plugin is read-only and requires no account. Until its public Plugins
-Directory review is complete, use the [visual setup guide](https://www.yuqi.site/mcp-guide)
-or install the repository marketplace:
-
-```sh
-codex plugin marketplace add YuqiGuo105/portfolio-mcp-server
-codex plugin add yuqi-portfolio@yuqi-portfolio-platform
-```
-
-The production MCP endpoint is `https://www.yuqi.site/mcp`.
-
-## System Design
-
-The edge view makes the public/admin trust boundary explicit and shows policy
-enforcement, versioned tool discovery, confirmation-gated writes, typed domain
-adapters, response sanitization, and auditable operational state.
-
-<img src="docs/architecture/public-mcp-edge.svg" alt="Public Portfolio MCP edge architecture" width="100%" />
-
-> **Maintain this diagram:** edit [`docs/architecture/public-mcp-edge.json`](docs/architecture/public-mcp-edge.json), then run `node scripts/render-architecture-diagram.mjs docs/architecture/public-mcp-edge.json`.
-
-## Production Operating Model
-
-This service exposes two deliberately separate trust boundaries:
-
-- `/mcp` is the anonymous public edge. Its curated tools are always read-only and sanitized.
-- `/mcp/admin` is the authenticated control plane. It verifies the Supabase JWT, resolves the managed role and owner capability from admin-service, then dynamically registers only tools allowed for that principal.
-
-Production boundaries:
-
-| Boundary | Decision |
-|---|---|
-| Public clients | ChatGPT, Copilot, Claude, Cursor and similar clients use this server only |
-| Tool scope | Public tools are read-only and return sanitized project/article/profile fields |
-| Privileged writes | Available only on `/mcp/admin`; confirmation-gated and idempotent through the internal gateway |
-| Response safety | Internal IDs, audit data, raw HTML, private delivery state, and long payloads are omitted or truncated |
-| Failure mode | Gateway timeouts fail closed with concise MCP errors; no partial private payload is returned |
-
-The browser admin console and Admin MCP endpoint share the same managed identity,
-backend authorization and canonical tool catalog. A suspended or removed admin
-therefore loses both UI and MCP access without a separate permission list.
-
-## Tools
-
-| Tool | Description | Inputs |
+| | Public edition | Administrator edition |
 | --- | --- | --- |
-| `search_portfolio` | Search projects, articles, life posts, and experience in one ranked result set | `query`, optional `types` and `limit` |
-| `search_projects` | Search projects by technology, architecture pattern, or keyword | `keyword`, optional `category` and `limit` |
-| `get_project` | Retrieve the details and links for a project | `projectId` |
-| `get_project_architecture` | Return pre-authored Mermaid diagrams stored with a project | `projectId` |
-| `search_articles` | Search technical and life/travel posts; semantic evidence fallback on keyword misses | `keyword`, optional `sourceType`, `category` and `limit` |
-| `get_article` | Read technical or life articles, including subsequent pages | `articleId`, optional `sourceType` and `offset` |
-| `get_profile` | Read owner-approved public profile evidence, work experience, and verified public profile links | None |
-| `get_social_profiles` | Read the exact owner-configured GitHub, LeetCode, and Instagram URLs | None |
-| `search_knowledge` | Multilingual semantic search over published content and approved public answers | `query`, optional `limit` |
-| `connection.check` | Read-only connection, tool-name, and schema diagnostics; admin connection also checks verified session and OAuth discovery | Optional `locale`, `client`, and up to 10 sample `invocations` |
+| Endpoint | `https://www.yuqi.site/mcp` | `https://www.yuqi.site/mcp/admin` |
+| Sign-in | No portfolio account required | **Sign-in and an authorized managed role required** |
+| Purpose | Discover projects, writing, architecture, and profile evidence | Inspect and manage platform data and operations |
+| Data | Published content and approved public evidence | Records permitted by the authenticated role and tool |
+| Writes | Not available | Tool-specific confirmation, validation, and stable idempotency keys |
+| Discovery | Curated read-only tools | Backend catalog filtered for the current principal |
+| Private diagnostics | Not available | ADMIN-only agent diagnostics and visual workspace |
 
-All tools are read-only and non-destructive. Search results are limited to 20 items. Responses omit internal IDs, audit data, indexing state, raw HTML, and other private implementation fields; long content is truncated to a configurable maximum.
+Signing in to the website does not upgrade a public connector. Administrator
+access requires a **separate connection**. Client approval preferences do not
+replace server-side authorization.
 
-All evidence must be `ACTIVE`, explicitly `public`, and retrieval-enabled. Personal
-profile and answer snippets additionally require `approved` review. The original
-source hash is checked again before returning a personal answer
-snippet. Private resumes, contact records and career memory are not queried by these
-tools. Restricted source identifiers and URLs are withheld. A failed retrieval is
-reported as a tool error, never as an empty education record. Read returned evidence
-before answering; zero keyword results alone do not prove a fact is absent.
+## Public Edition
 
-## Admin Control Plane
+### Connect and ask
 
-### Connection self-check
+Add `https://www.yuqi.site/mcp` as a remote Streamable HTTP MCP server in a
+compatible client. No portfolio credentials or internal gateway token are needed.
 
-Ask the connected client to **check the MCP connection**, or invoke
-`connection.check` with `locale: "zh"` for a Chinese report. It distinguishes
-expired sessions, invalid tokens, insufficient permissions, authentication
-outages, stale tool names, and incompatible arguments. Samples are validated
-against the registered schemas and **never executed**.
+Try: **"Explain Yuqi's strongest backend project and link the supporting evidence."**
 
-If login itself is broken, use the MCP service's read-only
-`/mcp/diagnostics?surface=admin` endpoint or the
-[connection-check CLI](docs/CONNECTION_DIAGNOSTICS.md). Neither requires a working
-MCP session to explain an authentication failure. Private tool details remain
-withheld until authorization succeeds.
+<p align="center">
+  <a href="docs/screenshots/claude-public-connector.png">
+    <img src="docs/screenshots/claude-public-connector.png" alt="Claude connected to the public Yuqi Portfolio MCP endpoint with read-only tool permissions" width="760" />
+  </a>
+</p>
+<p align="center"><sub>Public connector in Claude. This earlier capture shows a subset of today's tools; use live discovery for the current catalog.</sub></p>
 
-### Visual workspace
+### Available capabilities
 
-Connect `https://www.yuqi.site/mcp/admin`, sign in with a managed administrator
-account, and ask **"Open the admin workspace"**. MCP Apps-capable clients can
-display visitor timelines, operation status, retry reviews, and knowledge
-records inside the conversation. Text-only clients receive a summary and a
-link to the protected admin console.
+| Capability | Protocol tools | Result |
+| --- | --- | --- |
+| Portfolio discovery | `search_portfolio`, `search_projects`, `get_project` | Ranked content, project details, and canonical links |
+| Architecture | `get_project_architecture` | Stored diagrams and component descriptions, not invented architecture |
+| Articles and travel posts | `search_articles`, `get_article` | Technical and life content, source type, and paginated article text |
+| Profile and social links | `get_profile`, `get_social_profiles` | Approved evidence and owner-configured GitHub, LeetCode, and Instagram URLs |
+| Knowledge retrieval | `search_knowledge` | Multilingual evidence from published content and approved public answers |
+| Connection diagnostics | `connection.check` | Connection, tool-name, and argument-schema checks |
 
-- **Visitor activity:** filter by time, country, city, or search text; inspect
-  session events with identifiers collapsed by default. Admin traffic is excluded.
-- **Operations:** inspect durable transitions and failed tasks. A retry requires
-  a current-state review and an explicit confirmation; uncertain outcomes are
-  marked for verification, never automatically retried.
-- **Knowledge:** browse and read the existing knowledge database, including
-  source content, revision, and indexing status. This view does not edit records.
+Search is bounded and responses are sanitized. Personal answer evidence must be
+explicitly public, active, retrieval-enabled, and approved. Private resumes and
+candidate memory are not exposed; restricted source links remain withheld.
+Retrieval failures are errors, not empty profiles. A keyword miss does not prove
+that a fact is false.
 
-These tools and their UI resource are **ADMIN-only** and are absent from the
-public endpoint. The UI uses the standard MCP Apps bridge and ships as a
-self-contained resource, without browser-held backend credentials or external
-asset requests. See [workspace security and verification](docs/ADMIN_WORKSPACE.md).
-
-The Admin endpoint discovers its capabilities from `GET /api/tools` on the
-internal MCP gateway. It does not maintain a second hard-coded copy of backend
-operations. The current catalog covers these domains:
-
-| Domain | Representative operations |
-| --- | --- |
-| Content | Search/get, create draft, update, upload managed cover, publish, Search/RAG reindex |
-| Recovery | Inspect failed jobs, retry jobs, replay outbox events, drain workers |
-| Analytics | Visitor summary, top pages and referrer aggregates |
-| Notifications | Subscribers, delivery status, retries, test delivery and subscription status |
-| Support | Contact owner and verification-code unsubscribe workflow |
-| Alerts | List/get rules and prepare/apply versioned rule changes |
-| Access | Owner-only admin user listing, role assignment and suspension |
-
-### Invocation workflow
-
-```text
-MCP client
-  -> Supabase JWT verification
-  -> admin-service managed role + owner lookup
-  -> canonical gateway catalog
-  -> role/owner filtered tools/list
-  -> typed MCP input validation
-  -> explicit confirmation for risky writes
-  -> idempotency key assignment
-  -> internal MCP gateway policy + adapter
-  -> owning backend service
-  -> correlated operation event
-```
-
-Write tools publish MCP annotations (`readOnlyHint`, `destructiveHint`,
-`idempotentHint`, `openWorldHint`) so supporting clients can present the right
-approval experience. Writes require a stable `_idempotencyKey`, reused with the
-same arguments on retry. The visual workspace issues that key with its signed
-review ticket. A tool marked `confirmRequired` will not run
-unless `_confirmed=true`, and the internal gateway independently enforces the
-same risk gate.
-
-Admin identity management is owner-only. Those calls forward the original JWT
-to admin-service, which enforces the owner invariant and writes its own audit
-record. Operational tool events are also correlated into the platform timeline.
-
-`admin.upload_content_cover` attaches a PNG, JPEG, or WebP cover to existing
-content. The caller supplies either an allow-listed HTTPS URL or a bounded
-base64 payload. The owning admin service verifies the file signature, stores an
-immutable SHA-256-addressed object in Supabase Storage, updates the content row,
-and compensates a newly created object if the database update fails. The
-Supabase service-role credential never leaves the backend service.
-
-### Adding or changing a capability
-
-1. Implement the operation in the backend service that owns the state.
-2. Add or revise its definition in the internal gateway's `tool-catalog.yaml`.
-3. Define role, risk, confirmation, dry-run support and typed parameters there.
-4. Add gateway/backend contract and policy tests.
-5. Deploy the backend and gateway. The Admin MCP catalog refreshes automatically.
-
-Only public-friendly aliases and response sanitizers belong in this repository.
-Do not duplicate domain state transitions or database access in the MCP edge.
-
-## Run locally
-
-### Prerequisites
-
-- Node.js 20 or newer
-- npm
-- Access to the portfolio MCP gateway and its internal token
-
-Clone and install the server:
-
-```sh
-git clone https://github.com/YuqiGuo105/portfolio-mcp-server.git
-cd portfolio-mcp-server
-npm ci
-npm run build
-```
-
-Set the required gateway configuration:
-
-```sh
-export MCP_GATEWAY_URL="https://your-gateway.example.com"
-export MCP_GATEWAY_INTERNAL_TOKEN="your-shared-secret"
-```
-
-Start the server:
-
-```sh
-npm start
-```
-
-The MCP endpoint is available at `http://localhost:8080/mcp`; the health endpoint is available at `http://localhost:8080/health`.
-
-For development with automatic restarts:
-
-```sh
-npm run dev
-```
-
-## Configuration
-
-| Variable | Required | Default | Description |
-| --- | --- | --- | --- |
-| `MCP_GATEWAY_INTERNAL_TOKEN` | Yes | Empty | Bearer token used to authenticate with the internal gateway |
-| `MCP_GATEWAY_URL` | No | Deployed portfolio gateway | Base URL of the internal MCP gateway |
-| `PORT` | No | `8080` | HTTP listening port |
-| `GATEWAY_TIMEOUT_MS` | No | `10000` | Gateway request timeout in milliseconds |
-| `CAREER_GATEWAY_TIMEOUT_MS` | No | `30000` | Owner-only Career tool timeout; exceeds the downstream 25-second bound for cold starts |
-| `SITE_URL` | No | `https://www.yuqi.site` | Base URL used to build canonical content links |
-| `MAX_CONTENT_LENGTH` | No | `8000` | Maximum returned article or project body length |
-| `SUPABASE_JWT_SECRET` | Admin endpoint | Empty | Verifies Supabase access tokens |
-| `ADMIN_SERVICE_URL` | Admin endpoint | Empty | Resolves managed role, owner capability and owner-only operations |
-| `ADMIN_ALLOWED_EMAILS` | Local fallback | Empty | Break-glass fallback used only when `ADMIN_SERVICE_URL` is absent |
-| `ADMIN_AUTH_TIMEOUT_MS` | No | `5000` | Managed authorization lookup timeout |
-| `TOOL_CATALOG_CACHE_TTL_MS` | No | `60000` | Canonical catalog cache duration |
-| `TOOL_CATALOG_MAX_STALE_MS` | No | `900000` | Bounded stale catalog fallback during a gateway cold start |
-
-Do not expose `MCP_GATEWAY_INTERNAL_TOKEN` in client configuration or commit it to source control. MCP clients connect only to this server's public `/mcp` endpoint.
-
-## Connect an MCP client
-
-The public endpoint is packaged as an installable Codex plugin and as portable
-configuration examples for other MCP clients:
-
-- [Codex plugin](plugins/yuqi-portfolio)
-- [Cross-platform setup guide](docs/CLIENT_INTEGRATIONS.md)
-- [Client configuration examples](docs/client-configs)
-
-The production Streamable HTTP endpoint is:
-
-```txt
-https://www.yuqi.site/mcp
-```
-
-For Codex CLI, the direct installation command is:
+### Codex integration
 
 ```sh
 codex mcp add yuqi-portfolio --url https://www.yuqi.site/mcp
 codex mcp list
 ```
 
-To install the complete plugin from its GitHub marketplace instead:
+The [Codex plugin](plugins/yuqi-portfolio) also bundles the public server
+configuration and grounding instructions, without admin tools or credentials.
+
+<p align="center">
+  <a href="plugins/yuqi-portfolio/assets/codex-plugin.png">
+    <img src="plugins/yuqi-portfolio/assets/codex-plugin.png" alt="Yuqi Portfolio highlighted in the Codex plugin picker" width="580" />
+  </a>
+</p>
+<p align="center"><sub>The public Yuqi Portfolio plugin in Codex. Client appearance varies by version.</sub></p>
+
+See [client setup](docs/CLIENT_INTEGRATIONS.md) for plugin installation and
+configuration examples for Claude Code, Cursor, VS Code, and Gemini CLI.
+Support depends on the MCP host, not just the model provider: CLI support does
+not imply that a provider's consumer web chat accepts custom MCP servers.
+
+## Administrator Edition
+
+### Sign-in is mandatory
+
+Create a **separate** connector with `https://www.yuqi.site/mcp/admin`. Complete
+portfolio sign-in and OAuth consent with an authorized account, then refresh
+tool discovery. OAuth establishes identity; the managed role determines which
+tools can actually be listed and invoked.
+
+<p align="center">
+  <a href="docs/screenshots/claude-admin-connector.png">
+    <img src="docs/screenshots/claude-admin-connector.png" alt="Authenticated Portfolio Admin connector in Claude with read and write tools requiring approval" width="720" />
+  </a>
+</p>
+<p align="center"><sub>Administrator connector after authorization. Counts reflect the captured catalog and account permissions, not a fixed entitlement.</sub></p>
+
+**Signing in alone does not grant administrator access.** Each admin MCP request
+verifies the access token and resolves the managed role. Authorization-service
+failures deny access; user-editable profile metadata cannot grant privileges.
+Owner-account management adds an owner-only boundary.
+
+### Operator workflows
+
+| Area | Workflow | Boundary |
+| --- | --- | --- |
+| Content and knowledge | Find records, prepare edits, publish, and reindex Search/RAG | Catalog-defined role, validation, and write controls |
+| Visitor intelligence | Inspect authorized event/session details and automation evidence | Private details never reach public clients; signals are not proof of human identity |
+| Behavior alerts | Review a versioned rule change, then explicitly apply it | Expiry, revision checks, confirmation, and idempotent apply |
+| Delivery and recovery | Inspect failures, delivery status, operation timelines, and supported retries | Verify uncertain outcomes before retrying or replaying |
+| Chat Agent diagnostics | Inspect questions, final answers, sources, timings, and execution records | ADMIN-only; execution evidence, not hidden model reasoning |
+| Candidate workflows | Access owner-managed application memory and resume capabilities | Private career-service policy; excluded from the public plugin |
+| Access management | Inspect or change managed administrator access | Owner-only checks in the owning service |
+
+The deployed backend catalog is authoritative. Use exact tool names returned by
+your client's discovery, rather than constructing a `Portfolio:...` alias.
+
+### Workspace and self-check
+
+Ask **"Open the admin workspace"** to inspect visitor timelines, operations, and
+knowledge records inside an MCP Apps-capable client. Retries require current-state
+review and explicit confirmation. Text-only clients receive a summary and a link
+to the protected admin console.
+
+Ask **"Check this MCP connection and explain the results in Chinese"**, or call
+`connection.check` with `{"locale":"zh"}`. It validates sample tool names and
+arguments without executing operations. Public checks reveal no private tool
+details. Pre-login diagnostics use the MCP service origin; a website proxy may
+not forward that route.
+
+- [Visual workspace: tools, security, and verification](docs/ADMIN_WORKSPACE.md)
+- [Connection diagnostics: errors and recovery guidance](docs/CONNECTION_DIAGNOSTICS.md)
+- [Administrator OAuth and agent diagnostics setup](docs/CLIENT_INTEGRATIONS.md#administrator-tools)
+
+## Architecture
+
+<p align="center">
+  <a href="docs/architecture/public-mcp-edge.svg">
+    <img src="docs/architecture/public-mcp-edge.svg" alt="MCP edge architecture: public and authenticated access, internal gateway, domain services, and audit correlation" width="960" />
+  </a>
+</p>
+<p align="center"><a href="docs/architecture/public-mcp-edge.svg">Open the full-size architecture diagram</a></p>
+
+| Layer | Responsibility | Implementation |
+| --- | --- | --- |
+| MCP edge | Streamable HTTP, OAuth resource metadata, JWT verification, discovery, typed arguments, sanitization | [Server](src/index.js), [auth](src/admin-auth.js), [registry](src/tool-registry.js), [public tools](src/tools.js) |
+| Internal gateway | Canonical catalog, policy enforcement, durable dispatch, downstream resilience | [AI platform](https://github.com/YuqiGuo105/portfolio-ai-platform), [edge adapter](src/gateway-client.js) |
+| Domain services | Content, analytics, notifications, knowledge, candidate data, and domain transactions | [Admin](https://github.com/YuqiGuo105/portfolio-admin-service), [analytics](https://github.com/YuqiGuo105/portfolio-analytics-platform), [notifications](https://github.com/YuqiGuo105/portfolio-notification-service), [career](https://github.com/YuqiGuo105/portfolio-application-copilot) |
+| State and evidence | Database-backed operation transitions, audit projection, and agent-owned conversation history | [Durable operations](docs/DURABLE_OPERATIONS.md), [event correlation](src/operation-events.js) |
+
+**Public read:** discover a curated tool, validate arguments, retrieve approved
+evidence, sanitize the result, and return canonical links.
+
+**Protected write:** verify identity and permissions, validate the request, obtain
+required confirmation, claim a durable operation with a stable key, dispatch to
+the owning service, and expose status for follow-up.
+
+## Reliability and Security
+
+| Control | Behavior |
+| --- | --- |
+| Schema validation | Registered schemas validate arguments before dispatch |
+| Managed RBAC | Discovery and invocation enforce roles; sensitive domains add owner or ADMIN checks |
+| Confirmation | `confirmRequired` tools require explicit approval at the edge and internal gateway |
+| Idempotency | Write retries reuse the same key and arguments; conflicting reuse is rejected |
+| Durable status | Database-backed transitions survive restarts; completed operations can return stored results |
+| Downstream resilience | Internal adapters use circuit breaking, bulkheads, and rate limits; no blind write retries |
+| Audit boundaries | Correlated execution records support investigation without logging raw private arguments |
+| Credential isolation | Backend secrets stay server-side, outside public plugin configuration |
+
+Preserve one `_idempotencyKey` per write intent. Follow the returned state:
+
+| State | Meaning | Next action |
+| --- | --- | --- |
+| `RUNNING` | A worker owns dispatch | Query operation status |
+| `SUCCEEDED` | The tool result was persisted | Verify asynchronous indexing or delivery separately |
+| `RETRYABLE` | Rejected before downstream dispatch | Respect backoff; retry the same intent and key |
+| `FAILED_FINAL` | Downstream rejected the request | Inspect the error; corrected intent needs a new key |
+| `UNKNOWN` | Completion is uncertain | Reconcile downstream state; do not blindly retry |
+| `PREVIEW` | Dry-run validation only | Obtain approval before the real write |
+
+These controls do **not** claim global exactly-once execution across services.
+SMTP acceptance does not prove inbox delivery. See the
+[recovery contract and boundaries](docs/DURABLE_OPERATIONS.md).
+MCP annotations help clients present tools; they are not security enforcement.
+
+## Development
+
+Requires Node.js 20+ and npm. Meaningful tool calls also require access to the
+internal gateway; this repository is not a standalone copy of all backend services.
 
 ```sh
-codex plugin marketplace add YuqiGuo105/portfolio-mcp-server
-codex plugin add yuqi-portfolio@yuqi-portfolio-platform
+git clone https://github.com/YuqiGuo105/portfolio-mcp-server.git
+cd portfolio-mcp-server
+npm ci
+npm run build
+npm run check
+npm test
 ```
 
-The distributable plugin adds the same public server plus focused usage
-instructions. The public plugin intentionally excludes `/mcp/admin`: privileged
-tools require an authenticated administrator session and must never depend on a
-token committed to a plugin or client configuration.
+Supply `MCP_GATEWAY_URL` and `MCP_GATEWAY_INTERNAL_TOKEN` through your environment
+or secret manager, then run `npm start`. The default port is `8080`; `/health` is
+the health endpoint and `/mcp` is the public MCP route. Never commit real secrets.
 
-## Docker
+<details>
+<summary><strong>Runtime configuration</strong></summary>
 
-Build and run the included production image:
+| Variable | Purpose |
+| --- | --- |
+| `MCP_GATEWAY_URL` | Internal gateway origin; configure explicitly for your environment |
+| `MCP_GATEWAY_INTERNAL_TOKEN` | Server-to-gateway credential; never distribute to clients |
+| `PORT` | HTTP port, default `8080` |
+| `SITE_URL` | Canonical origin, default `https://www.yuqi.site` |
+| `GATEWAY_TIMEOUT_MS` | Default gateway deadline, `10000` ms |
+| `CAREER_GATEWAY_TIMEOUT_MS` | Career gateway deadline, `30000` ms |
+| `MAX_CONTENT_LENGTH` | Returned content bound, default `8000` |
+| `SUPABASE_AUTH_ISSUER` | Admin JWT issuer and asymmetric JWKS discovery |
+| `SUPABASE_JWT_SECRET` | Legacy HS256 verification, when that token format is used |
+| `ADMIN_SERVICE_URL` | Managed authorization service for production |
+| `ADMIN_ALLOWED_EMAILS` | Environment-only fallback without an admin service; not a substitute for production managed roles |
+| `ADMIN_AUTH_TIMEOUT_MS` | Authorization deadline, `5000` ms |
+| `TOOL_CATALOG_CACHE_TTL_MS` | Catalog refresh interval, `60000` ms |
+| `TOOL_CATALOG_MAX_STALE_MS` | Bounded stale catalog fallback, `900000` ms |
+
+</details>
+
+<details>
+<summary><strong>Browser tests and Docker</strong></summary>
+
+```sh
+npx playwright install chromium
+npm run test:e2e
+```
+
+The E2E suite uses isolated services, real HTTP/MCP transport, and an MCP Apps
+host. It does not prove every third-party client's UI or consent flow works.
+Live verification is separate and requires deliberate administrator authorization.
 
 ```sh
 docker build -t portfolio-mcp-server .
 docker run --rm -p 8080:8080 \
-  -e MCP_GATEWAY_URL="https://your-gateway.example.com" \
-  -e MCP_GATEWAY_INTERNAL_TOKEN="your-shared-secret" \
+  -e MCP_GATEWAY_URL -e MCP_GATEWAY_INTERNAL_TOKEN \
   portfolio-mcp-server
 ```
 
-Verify the service:
+The Docker example forwards configured environment variables. Set up admin
+authentication separately before enabling privileged connections.
 
-```sh
-curl http://localhost:8080/health
-```
+</details>
 
-## Related project
+## Documentation and Related Projects
 
-- [YuqiGuo105/Portfolio](https://github.com/YuqiGuo105/Portfolio) — the Next.js portfolio frontend and platform overview
+- [Portfolio website and platform overview](https://github.com/YuqiGuo105/Portfolio)
+- [Client configurations](docs/client-configs) and [integration guide](docs/CLIENT_INTEGRATIONS.md)
+- [Durable operations](docs/DURABLE_OPERATIONS.md)
+- [Admin workspace](docs/ADMIN_WORKSPACE.md) and [connection diagnostics](docs/CONNECTION_DIAGNOSTICS.md)
+- [Screenshot provenance](docs/screenshots/README.md)
 
 ## License
 
-No license file is currently included. All rights are reserved unless a license is added.
+This repository does not currently include a license file. Do not assume that
+the main portfolio repository's MIT license applies to this separate repository.

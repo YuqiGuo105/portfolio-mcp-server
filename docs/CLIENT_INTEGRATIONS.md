@@ -151,5 +151,6 @@ grant in Supabase Auth when no longer needed.
 ## Verification
 
 After installation, ask the client to list tools or run a read-only query such
-as searching projects. A healthy public connection exposes six tools and never
-exposes admin operations.
+as searching projects. A healthy public connection exposes the current curated
+read-only catalog and never exposes admin operations. Use live discovery rather
+than a tool count from an older screenshot.

@@ -8,8 +8,9 @@ and authenticated role determine capability, not the numbers in a screenshot.
 | --- | --- | --- |
 | `claude-public-connector.png` | Portfolio `docs/readme-assets/claude-yuqi-portfolio-connector.png`, September 7, 2026 | Public endpoint and read-only permissions |
 | `claude-admin-connector.png` | Portfolio `docs/readme-assets/claude-yuqi-portfolio-admin-connector.png`, September 7, 2026 | Administrator connector after authorization |
-| `../../plugins/yuqi-portfolio/assets/codex-plugin.png` | Existing image shipped in this MCP repository | Public Codex plugin picker with Yuqi Portfolio highlighted |
+| `codex-public-plugin.png` | Portfolio `public/assets/images/codex-yuqi-portfolio-plugin-v2.png` | Public Codex plugin detail page with example prompts |
+| `admin-sign-in.png` | Portfolio MCP guide `public/assets/images/mcp-guide/admin-sign-in.png` | Administrator sign-in before OAuth consent; no credentials entered |
 
-The Claude images are copied unchanged. The Codex image is referenced in place.
+All images are copied unchanged from existing Portfolio assets.
 No visitor identifiers, bearer tokens, private knowledge records, or live admin
 workspace data were added. The architecture SVG is a diagram, not a screenshot.

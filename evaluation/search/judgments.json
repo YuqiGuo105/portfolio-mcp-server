@@ -1,0 +1,466 @@
+[
+  {
+    "query": "GitHub Actions",
+    "group": "GitHub Operations",
+    "split": "test",
+    "relevance": {
+      "BLOG:df9bed8e-163b-41bb-82be-7f970eb7875d": 3
+    }
+  },
+  {
+    "query": "代码审查",
+    "group": "GitHub Operations",
+    "split": "test",
+    "relevance": {
+      "BLOG:df9bed8e-163b-41bb-82be-7f970eb7875d": 3
+    }
+  },
+  {
+    "query": "持续集成发布回滚",
+    "group": "GitHub Operations",
+    "split": "test",
+    "relevance": {
+      "BLOG:df9bed8e-163b-41bb-82be-7f970eb7875d": 3
+    }
+  },
+  {
+    "query": "how to review pull requests",
+    "group": "GitHub Operations",
+    "split": "test",
+    "relevance": {
+      "BLOG:df9bed8e-163b-41bb-82be-7f970eb7875d": 3
+    }
+  },
+  {
+    "query": "盐湖城",
+    "group": "From New York",
+    "split": "test",
+    "relevance": {
+      "LIFE_BLOG:2": 3
+    }
+  },
+  {
+    "query": "Salt Lake City",
+    "group": "From New York",
+    "split": "test",
+    "relevance": {
+      "LIFE_BLOG:2": 3
+    }
+  },
+  {
+    "query": "SLC",
+    "group": "From New York",
+    "split": "test",
+    "relevance": {
+      "LIFE_BLOG:2": 3
+    }
+  },
+  {
+    "query": "芝加哥",
+    "group": "From New York",
+    "split": "test",
+    "relevance": {
+      "LIFE_BLOG:2": 3
+    }
+  },
+  {
+    "query": "克里夫兰",
+    "group": "From New York",
+    "split": "test",
+    "relevance": {
+      "LIFE_BLOG:2": 3
+    }
+  },
+  {
+    "query": "did he go to chiago",
+    "group": "From New York",
+    "split": "test",
+    "relevance": {
+      "LIFE_BLOG:2": 3
+    }
+  },
+  {
+    "query": "去过旧金山吗",
+    "group": "From New York",
+    "split": "test",
+    "relevance": {
+      "LIFE_BLOG:2": 3
+    }
+  },
+  {
+    "query": "容器编排",
+    "group": "Kubernetes vs Docker",
+    "split": "train",
+    "relevance": {
+      "BLOG:0d83bfe7-f639-47af-a613-50add642c293": 3
+    }
+  },
+  {
+    "query": "Docker vs Kubernetes",
+    "group": "Kubernetes vs Docker",
+    "split": "train",
+    "relevance": {
+      "BLOG:0d83bfe7-f639-47af-a613-50add642c293": 3
+    }
+  },
+  {
+    "query": "container runtime",
+    "group": "Kubernetes vs Docker",
+    "split": "train",
+    "relevance": {
+      "BLOG:0d83bfe7-f639-47af-a613-50add642c293": 3
+    }
+  },
+  {
+    "query": "端到端测试",
+    "group": "End-to-End",
+    "split": "train",
+    "relevance": {
+      "BLOG:9b4fdb28-9305-4f16-95f5-1a76dad6b039": 3
+    }
+  },
+  {
+    "query": "test automation Playwright",
+    "group": "End-to-End",
+    "split": "train",
+    "relevance": {
+      "BLOG:9b4fdb28-9305-4f16-95f5-1a76dad6b039": 3
+    }
+  },
+  {
+    "query": "如何做自动化测试",
+    "group": "End-to-End",
+    "split": "train",
+    "relevance": {
+      "BLOG:9b4fdb28-9305-4f16-95f5-1a76dad6b039": 3
+    }
+  },
+  {
+    "query": "面试 interview offer",
+    "group": "24 New-Grad",
+    "split": "train",
+    "relevance": {
+      "LIFE_BLOG:1": 3
+    }
+  },
+  {
+    "query": "应届生求职",
+    "group": "24 New-Grad",
+    "split": "train",
+    "relevance": {
+      "LIFE_BLOG:1": 3
+    }
+  },
+  {
+    "query": "Amazon offer",
+    "group": "24 New-Grad",
+    "split": "train",
+    "relevance": {
+      "LIFE_BLOG:1": 3
+    }
+  },
+  {
+    "query": "高盛面试",
+    "group": "24 New-Grad",
+    "split": "train",
+    "relevance": {
+      "LIFE_BLOG:1": 3
+    }
+  },
+  {
+    "query": "开源贡献",
+    "group": "Open Source Reliability",
+    "split": "train",
+    "relevance": {
+      "PROJECT:0470298d-c74d-4d4b-be33-d948b033002a": 3
+    }
+  },
+  {
+    "query": "Spring AI Alibaba",
+    "group": "Open Source Reliability",
+    "split": "train",
+    "relevance": {
+      "PROJECT:0470298d-c74d-4d4b-be33-d948b033002a": 3
+    }
+  },
+  {
+    "query": "Google LangExtract",
+    "group": "Open Source Reliability",
+    "split": "train",
+    "relevance": {
+      "PROJECT:0470298d-c74d-4d4b-be33-d948b033002a": 3
+    }
+  },
+  {
+    "query": "retry backoff recovery",
+    "group": "Open Source Reliability",
+    "split": "train",
+    "relevance": {
+      "PROJECT:0470298d-c74d-4d4b-be33-d948b033002a": 3
+    }
+  },
+  {
+    "query": "邮件订阅",
+    "group": "Subscription & Notification",
+    "split": "train",
+    "relevance": {
+      "PROJECT:c049c604-50bd-4265-9318-866fd5f1a69e": 3
+    }
+  },
+  {
+    "query": "unsubscribe",
+    "group": "Subscription & Notification",
+    "split": "train",
+    "relevance": {
+      "PROJECT:c049c604-50bd-4265-9318-866fd5f1a69e": 3
+    }
+  },
+  {
+    "query": "durable notification delivery",
+    "group": "Subscription & Notification",
+    "split": "train",
+    "relevance": {
+      "PROJECT:c049c604-50bd-4265-9318-866fd5f1a69e": 3
+    }
+  },
+  {
+    "query": "SMTP preferences",
+    "group": "Subscription & Notification",
+    "split": "train",
+    "relevance": {
+      "PROJECT:c049c604-50bd-4265-9318-866fd5f1a69e": 3
+    }
+  },
+  {
+    "query": "全文搜索",
+    "group": "Content Intelligence",
+    "split": "train",
+    "relevance": {
+      "PROJECT:8edf9020-39b6-4db4-83b3-43c459bef1cf": 3,
+      "PROJECT:7c3715bf-7722-4df5-9e83-5d7e9493ea2c": 2
+    }
+  },
+  {
+    "query": "RAG indexing",
+    "group": "Content Intelligence",
+    "split": "train",
+    "relevance": {
+      "PROJECT:8edf9020-39b6-4db4-83b3-43c459bef1cf": 3,
+      "PROJECT:7c3715bf-7722-4df5-9e83-5d7e9493ea2c": 2
+    }
+  },
+  {
+    "query": "事务发件箱",
+    "group": "Content Intelligence",
+    "split": "train",
+    "relevance": {
+      "PROJECT:8edf9020-39b6-4db4-83b3-43c459bef1cf": 3,
+      "PROJECT:7c3715bf-7722-4df5-9e83-5d7e9493ea2c": 2
+    }
+  },
+  {
+    "query": "OpenSearch pgvector",
+    "group": "Content Intelligence",
+    "split": "train",
+    "relevance": {
+      "PROJECT:8edf9020-39b6-4db4-83b3-43c459bef1cf": 3,
+      "PROJECT:7c3715bf-7722-4df5-9e83-5d7e9493ea2c": 2
+    }
+  },
+  {
+    "query": "微服务架构",
+    "group": "Portfolio Platform",
+    "split": "train",
+    "relevance": {
+      "PROJECT:7c3715bf-7722-4df5-9e83-5d7e9493ea2c": 3,
+      "PROJECT:8edf9020-39b6-4db4-83b3-43c459bef1cf": 1,
+      "PROJECT:da8e70ff-57f5-4a76-9250-b93677dae43c": 1
+    }
+  },
+  {
+    "query": "AI assistant platform",
+    "group": "Portfolio Platform",
+    "split": "train",
+    "relevance": {
+      "PROJECT:7c3715bf-7722-4df5-9e83-5d7e9493ea2c": 3,
+      "PROJECT:8edf9020-39b6-4db4-83b3-43c459bef1cf": 1,
+      "PROJECT:da8e70ff-57f5-4a76-9250-b93677dae43c": 1
+    }
+  },
+  {
+    "query": "MCP Kafka",
+    "group": "Portfolio Platform",
+    "split": "train",
+    "relevance": {
+      "PROJECT:7c3715bf-7722-4df5-9e83-5d7e9493ea2c": 3,
+      "PROJECT:8edf9020-39b6-4db4-83b3-43c459bef1cf": 1,
+      "PROJECT:da8e70ff-57f5-4a76-9250-b93677dae43c": 1
+    }
+  },
+  {
+    "query": "多语言聊天",
+    "group": "PolyglotBot",
+    "split": "train",
+    "relevance": {
+      "PROJECT:a9b53277-08e9-4727-b136-86cd12e21f22": 3
+    }
+  },
+  {
+    "query": "circuit breaker",
+    "group": "PolyglotBot",
+    "split": "train",
+    "relevance": {
+      "PROJECT:a9b53277-08e9-4727-b136-86cd12e21f22": 3
+    }
+  },
+  {
+    "query": "distributed tracing gateway",
+    "group": "PolyglotBot",
+    "split": "train",
+    "relevance": {
+      "PROJECT:a9b53277-08e9-4727-b136-86cd12e21f22": 3
+    }
+  },
+  {
+    "query": "视频通话",
+    "group": "TalkNest",
+    "split": "train",
+    "relevance": {
+      "PROJECT:7e42b9d7-c888-429e-8b61-5a6888bf6699": 3
+    }
+  },
+  {
+    "query": "real time chat",
+    "group": "TalkNest",
+    "split": "train",
+    "relevance": {
+      "PROJECT:7e42b9d7-c888-429e-8b61-5a6888bf6699": 3
+    }
+  },
+  {
+    "query": "WebRTC Socket.IO",
+    "group": "TalkNest",
+    "split": "train",
+    "relevance": {
+      "PROJECT:7e42b9d7-c888-429e-8b61-5a6888bf6699": 3
+    }
+  },
+  {
+    "query": "Helm deployment",
+    "group": "Gift Galaxy",
+    "split": "train",
+    "relevance": {
+      "PROJECT:e592bf77-4279-4a95-8257-3bd95f8f7eb9": 3
+    }
+  },
+  {
+    "query": "service discovery",
+    "group": "Gift Galaxy",
+    "split": "train",
+    "relevance": {
+      "PROJECT:e592bf77-4279-4a95-8257-3bd95f8f7eb9": 3
+    }
+  },
+  {
+    "query": "Gift Galaxy",
+    "group": "Gift Galaxy",
+    "split": "train",
+    "relevance": {
+      "PROJECT:e592bf77-4279-4a95-8257-3bd95f8f7eb9": 3
+    }
+  },
+  {
+    "query": "浏览器扩展",
+    "group": "Application Copilot",
+    "split": "train",
+    "relevance": {
+      "PROJECT:da8e70ff-57f5-4a76-9250-b93677dae43c": 3
+    }
+  },
+  {
+    "query": "表单自动填写",
+    "group": "Application Copilot",
+    "split": "train",
+    "relevance": {
+      "PROJECT:da8e70ff-57f5-4a76-9250-b93677dae43c": 3
+    }
+  },
+  {
+    "query": "Chrome extension job application",
+    "group": "Application Copilot",
+    "split": "train",
+    "relevance": {
+      "PROJECT:da8e70ff-57f5-4a76-9250-b93677dae43c": 3
+    }
+  },
+  {
+    "query": "访客分析",
+    "group": "Visitor Behavior",
+    "split": "train",
+    "relevance": {
+      "PROJECT:37789a93-f60a-44e4-ab63-1479d036e686": 3
+    }
+  },
+  {
+    "query": "behavior analytics funnels",
+    "group": "Visitor Behavior",
+    "split": "train",
+    "relevance": {
+      "PROJECT:37789a93-f60a-44e4-ab63-1479d036e686": 3
+    }
+  },
+  {
+    "query": "访客告警",
+    "group": "Visitor Behavior",
+    "split": "train",
+    "relevance": {
+      "PROJECT:37789a93-f60a-44e4-ab63-1479d036e686": 3
+    }
+  },
+  {
+    "query": "CuraStone",
+    "group": "CuraStone",
+    "split": "train",
+    "relevance": {
+      "EXPERIENCE:6": 3
+    }
+  },
+  {
+    "query": "backend developer intern",
+    "group": "CuraStone",
+    "split": "train",
+    "relevance": {
+      "EXPERIENCE:6": 3
+    }
+  },
+  {
+    "query": "Goldman Sachs",
+    "group": "Goldman Sachs",
+    "split": "train",
+    "relevance": {
+      "EXPERIENCE:5": 3,
+      "LIFE_BLOG:1": 1
+    }
+  },
+  {
+    "query": "software engineer full time",
+    "group": "Goldman Sachs",
+    "split": "train",
+    "relevance": {
+      "EXPERIENCE:5": 3,
+      "LIFE_BLOG:1": 1
+    }
+  },
+  {
+    "query": "zzzz-no-such-document-93478",
+    "group": "negative",
+    "split": "test",
+    "relevance": {}
+  },
+  {
+    "query": "量子纠缠实验室",
+    "group": "negative",
+    "split": "test",
+    "relevance": {}
+  }
+]

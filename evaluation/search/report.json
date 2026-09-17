@@ -1,0 +1,17 @@
+{
+  "version": "pairwise-lr-fbf92032fb30",
+  "trainingPairs": 110,
+  "regressionQueries": 13,
+  "note": "Small agent-curated, topic-split development regression fixture. Queries were inspected during development; this is not an unbiased held-out benchmark, online A/B test, or proof of ranking improvement.",
+  "baseline": {
+    "ndcg@5": 1.0,
+    "mrr": 1.0,
+    "recall@5": 1.0
+  },
+  "candidate": {
+    "ndcg@5": 1.0,
+    "mrr": 1.0,
+    "recall@5": 1.0
+  },
+  "promoted": true
+}

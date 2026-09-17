@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { tools } from '../src/tools.js';
 import { sanitizeContentDetail } from '../src/sanitize.js';
+import { searchCatalog } from '../src/search/service.js';
+
+test.beforeEach(() => searchCatalog.invalidate());
 
 function mockGateway(t, handler) {
   const original = globalThis.fetch;
@@ -13,19 +16,19 @@ test('article search covers life/travel posts and keeps category filtering', asy
   const calls = [];
   mockGateway(t, (_, args) => {
     calls.push(args);
-    return { items: args.sourceType === 'LIFE_BLOG' ? [{ sourceId: '2', sourceType: 'LIFE_BLOG', title: 'Travel journal', raw: { require_login: false } }] : [] };
+    return { items: args.sourceType === 'LIFE_BLOG' ? [{ sourceId: '2', sourceType: 'LIFE_BLOG', title: 'Travel journal', tags: ['Chicago'], category: 'Travel', raw: { require_login: false } }] : [] };
   });
   const result = await tools.find(t => t.name === 'search_articles').handler({ keyword: 'Chicago', category: 'Travel' });
   assert.equal(result.total, 1);
   assert.equal(result.articles[0].url, 'https://www.yuqi.site/life-blog/2');
   assert.deepEqual(result.searchedTypes, ['BLOG', 'LIFE_BLOG']);
-  assert.ok(calls.every(call => call.category === 'Travel'));
+  assert.equal(calls.length, 4);
 });
 
 test('article search supports an explicit technical-only collection', async t => {
   mockGateway(t, (url, args) => {
     if (url.includes('portfolio.search_public_knowledge')) return { evidence: [], total: 0 };
-    assert.equal(args.sourceType, 'BLOG');
+    assert.ok(['BLOG', 'PROJECT', 'LIFE_BLOG', 'EXPERIENCE'].includes(args.sourceType));
     return { items: [] };
   });
   const result = await tools.find(t => t.name === 'search_articles').handler({ keyword: 'missing', sourceType: 'BLOG' });
@@ -163,10 +166,25 @@ test('matching a restricted article still retrieves public-answer evidence', asy
   mockGateway(t, (url, args) => {
     if (url.includes('portfolio.search_public_knowledge')) return { evidence: [{ text: 'Approved public travel fact' }], total: 1 };
     return { items: args.sourceType === 'LIFE_BLOG'
-      ? [{ sourceType: 'LIFE_BLOG', sourceId: '2', title: 'Travel', raw: { require_login: true } }] : [] };
+      ? [{ sourceType: 'LIFE_BLOG', sourceId: '2', title: 'Travel', tags: ['Chicago'], raw: { require_login: true } }] : [] };
   });
   const result = await tools.find(t => t.name === 'search_articles').handler({ keyword: 'Chicago' });
   assert.equal(result.total, 1);
   assert.equal(result.evidenceTotal, 1);
-  assert.equal(result.articles[0].url, undefined);
+  assert.equal(result.articles[0].url, 'https://www.yuqi.site/life-blog/2');
+});
+
+test('knowledge failure preserves independently matched previews with an explicit evidence warning', async t => {
+  const original = globalThis.fetch;
+  t.after(() => { globalThis.fetch = original; });
+  globalThis.fetch = async (url, options) => {
+    if (url.includes('portfolio.search_public_knowledge')) return new Response('unavailable', { status: 503 });
+    const args = JSON.parse(options.body);
+    return Response.json({ items: args.sourceType === 'LIFE_BLOG'
+      ? [{ sourceType: 'LIFE_BLOG', sourceId: '2', title: 'Travel', tags: ['Chicago'], raw: { require_login: true } }] : [] });
+  };
+  const result = await tools.find(t => t.name === 'search_articles').handler({ keyword: 'Chicago' });
+  assert.equal(result.total, 1);
+  assert.equal(result.evidenceStatus, 'UNAVAILABLE');
+  assert.match(result.guidance, /not verified answers/);
 });

@@ -1,0 +1,331 @@
+[
+  {
+    "sourceType": "BLOG",
+    "sourceId": "df9bed8e-163b-41bb-82be-7f970eb7875d",
+    "title": "GitHub Operations in Practice: Pull Requests, CI/CD, Releases, and Recovery",
+    "summary": "A production-oriented guide to pull requests, protected branches, required checks, merge queues, GitHub Actions deployments, releases, and safe rollback.",
+    "tags": [
+      "GitHub",
+      "Git",
+      "DevOps",
+      "CI/CD",
+      "Release Engineering",
+      "Developer Workflow",
+      "版本控制",
+      "代码审查",
+      "持续集成",
+      "发布与回滚"
+    ],
+    "category": "Software Development"
+  },
+  {
+    "sourceType": "BLOG",
+    "sourceId": "0d83bfe7-f639-47af-a613-50add642c293",
+    "title": "Kubernetes vs Docker: Containers, Runtimes, and Orchestration",
+    "summary": "A practical guide to Docker, container images and runtimes, Kubernetes orchestration, CRI, production tradeoffs, and choosing the smallest platform that fits.",
+    "tags": [
+      "Docker",
+      "Kubernetes",
+      "Containers",
+      "Container Runtime",
+      "DevOps",
+      "Platform Engineering",
+      "容器",
+      "容器编排",
+      "容器运行时"
+    ],
+    "category": "Backend"
+  },
+  {
+    "sourceType": "BLOG",
+    "sourceId": "9b4fdb28-9305-4f16-95f5-1a76dad6b039",
+    "title": "End-to-End (E2E) Testing in Practice",
+    "summary": "A production-oriented guide to defining E2E boundaries, selecting critical journeys, controlling data and environments, integrating tests into CI, and eliminating flakiness.",
+    "tags": [
+      "End-to-End Testing",
+      "E2E",
+      "Test Automation",
+      "Playwright",
+      "CI/CD",
+      "Quality Engineering",
+      "端到端测试",
+      "自动化测试",
+      "测试稳定性"
+    ],
+    "category": "Test"
+  },
+  {
+    "sourceType": "PROJECT",
+    "sourceId": "0470298d-c74d-4d4b-be33-d948b033002a",
+    "title": "Open Source Reliability Engineering",
+    "summary": "Merged upstream contributions improving workflow recovery, bounded AI-provider retries, and Kubernetes Java client correctness.",
+    "tags": [
+      "Open Source",
+      "Java",
+      "AI Agents",
+      "Workflow Recovery",
+      "Retry & Backoff",
+      "Kubernetes",
+      "Testing",
+      "开源贡献",
+      "故障恢复",
+      "重试退避",
+      "Spring AI Alibaba",
+      "Google LangExtract"
+    ],
+    "category": "Open Source Contribution"
+  },
+  {
+    "sourceType": "PROJECT",
+    "sourceId": "c049c604-50bd-4265-9318-866fd5f1a69e",
+    "title": "Subscription & Notification Platform",
+    "summary": "A subscriber lifecycle and notification delivery system with email verification, preference enforcement, durable retries and governed MCP unsubscribe.",
+    "tags": [
+      "Java",
+      "Spring Boot",
+      "PostgreSQL",
+      "Kafka",
+      "SMTP",
+      "Redis",
+      "MCP",
+      "Flyway",
+      "邮件订阅",
+      "通知系统",
+      "退订",
+      "可靠投递"
+    ],
+    "category": "Backend"
+  },
+  {
+    "sourceType": "PROJECT",
+    "sourceId": "8edf9020-39b6-4db4-83b3-43c459bef1cf",
+    "title": "Content Intelligence Platform",
+    "summary": "A transactional content publishing pipeline that builds independently replayable OpenSearch and pgvector projections through Kafka.",
+    "tags": [
+      "Java",
+      "Spring Boot",
+      "PostgreSQL",
+      "Kafka",
+      "OpenSearch",
+      "pgvector",
+      "Gemini",
+      "OpenAI",
+      "Flyway",
+      "全文搜索",
+      "检索增强生成",
+      "事务发件箱",
+      "索引重建"
+    ],
+    "category": "Backend, Web-Infra"
+  },
+  {
+    "sourceType": "PROJECT",
+    "sourceId": "7c3715bf-7722-4df5-9e83-5d7e9493ea2c",
+    "title": "Portfolio Platform",
+    "summary": "Production Architecture Case Study · 2026 Portfolio Platform Production-Grade Event-Driven Microservice Architecture A full-stack portfolio platform designed as a real distributed system: event-driven content publishing, Kafka fan-out, OpenSearch indexing, RAG-powered AI assis...",
+    "tags": [
+      "Next.js",
+      "TypeScript",
+      "Spring Boot",
+      "Kafka",
+      "PostgreSQL",
+      "pgvector",
+      "OpenSearch",
+      "Valkey",
+      "Gemini",
+      "OpenAI",
+      "MCP",
+      "Google Cloud Run",
+      "Vercel",
+      "Flyway",
+      "微服务架构",
+      "AI 助手",
+      "事件驱动",
+      "可观测性"
+    ],
+    "category": "Full-Stack,Web Infra,Backend"
+  },
+  {
+    "sourceType": "PROJECT",
+    "sourceId": "a9b53277-08e9-4727-b136-86cd12e21f22",
+    "title": "PolyglotBot",
+    "summary": "Unlocking Multilingual Digital Communication with PolyglotBot - Demo &nbsp; Streamlined Interactions via API Gateway Central to PolyglotBot’s architecture is the API Gateway, which serves as the primary ingress point for all client requests. It efficiently routes these request...",
+    "tags": [
+      "Microservices",
+      "Spring Boot",
+      "Flask",
+      "Docker",
+      "Circuit Breaker",
+      "Message Queue",
+      "React",
+      "多语言聊天",
+      "API 网关",
+      "熔断器",
+      "分布式追踪"
+    ],
+    "category": "Full-Stack,Backend"
+  },
+  {
+    "sourceType": "PROJECT",
+    "sourceId": "7e42b9d7-c888-429e-8b61-5a6888bf6699",
+    "title": "TalkNest",
+    "summary": "TalkNest - Real Time Chat Application Development - Demo Objective: The project aims to develop a comprehensive chat application facilitating real-time messaging, video calls, and user management through a web interface. Technologies Used: React.js: Utilized for building the u...",
+    "tags": [
+      "React",
+      "Node.js (Express)",
+      "实时聊天",
+      "视频通话",
+      "WebRTC",
+      "Socket.IO"
+    ],
+    "category": "Full-Stack"
+  },
+  {
+    "sourceType": "PROJECT",
+    "sourceId": "e592bf77-4279-4a95-8257-3bd95f8f7eb9",
+    "title": "Gift Galaxy",
+    "summary": "Gift Galaxy Microservices Description The Gift Galaxy project aims to utilize microservices architecture for efficient development and deployment of its application. This report outlines the tools and procedures used for local development and Kubernetes-based production deploy...",
+    "tags": [
+      "Microservices",
+      "Spring Boot",
+      "Postman",
+      "Docker",
+      "Kubernetes",
+      "Helm",
+      "微服务",
+      "服务发现",
+      "容器部署"
+    ],
+    "category": "Backend"
+  },
+  {
+    "sourceType": "PROJECT",
+    "sourceId": "37789a93-f60a-44e4-ab63-1479d036e686",
+    "title": "Visitor Behavior Analytics — Aggregation and Recommendation Signals",
+    "summary": "A first-party behavioral analytics pipeline for deduplicated ingestion, sessionization, funnels, rollups, alerting and recommendation-ready features.",
+    "tags": [
+      "Java",
+      "Spring Boot",
+      "Kafka",
+      "PostgreSQL",
+      "Valkey",
+      "OpenSearch",
+      "Prometheus",
+      "Grafana",
+      "访客分析",
+      "行为分析",
+      "转化漏斗",
+      "访客告警"
+    ],
+    "category": "Backend, Web-Infra"
+  },
+  {
+    "sourceType": "PROJECT",
+    "sourceId": "ad5bd4df-a31f-4325-816c-131e83f27ab0",
+    "title": "[Superseded Draft] Content Intelligence Platform — Event-Driven Search and RAG",
+    "summary": "Platform Case Study · Content Intelligence Content Intelligence Platform From Admin Commit to Search and RAG Projections This system turns one authoritative content mutation into independently rebuildable search and retrieval projections. The synchronous write path ends at Pos...",
+    "tags": [
+      "Java",
+      "Spring Boot",
+      "PostgreSQL",
+      "Kafka",
+      "OpenSearch",
+      "pgvector",
+      "Gemini",
+      "OpenAI",
+      "Flyway"
+    ],
+    "category": "Backend, Web-Infra"
+  },
+  {
+    "sourceType": "PROJECT",
+    "sourceId": "da8e70ff-57f5-4a76-9250-b93677dae43c",
+    "title": "Application Copilot: Secure, Human-in-the-Loop Job Application Automation",
+    "summary": "A Chrome Manifest V3 and Spring Boot system that resolves application fields through an authenticated MCP workflow, encrypted private memory, versioned resume assets, and explicit review gates.",
+    "tags": [
+      "Chrome Extension",
+      "Manifest V3",
+      "Java",
+      "Spring Boot",
+      "MCP",
+      "PostgreSQL",
+      "Valkey",
+      "Supabase Storage",
+      "Codex",
+      "Human-in-the-Loop",
+      "State Machine",
+      "Security",
+      "浏览器扩展",
+      "求职申请",
+      "表单自动填写",
+      "人工审核"
+    ],
+    "category": "Full-Stack,Web Infra,Backend"
+  },
+  {
+    "sourceType": "LIFE_BLOG",
+    "sourceId": "2",
+    "title": "From New York Island to California",
+    "summary": "Coast-to-Coast journey across America’s unforgettable cities and wondrous landscapes.",
+    "tags": [
+      "USA",
+      "Travel",
+      "盐湖城",
+      "Salt Lake City",
+      "SLC",
+      "美国旅行",
+      "纽约 New York City",
+      "雪城 Syracuse",
+      "水牛城 Buffalo",
+      "克利夫兰 Cleveland",
+      "克里夫兰",
+      "芝加哥 Chicago",
+      "爱荷华城 Iowa City",
+      "林肯 Lincoln",
+      "夏延 Cheyenne",
+      "旧金山 San Francisco",
+      "优胜美地 Yosemite"
+    ],
+    "category": "Travel ",
+    "requireLogin": true
+  },
+  {
+    "sourceType": "LIFE_BLOG",
+    "sourceId": "1",
+    "title": "24 New-Grad Get Full-Time Offer",
+    "summary": "Fall 2024: New Grad Lands a Job",
+    "tags": [
+      "Job",
+      "New Grad",
+      "Interview",
+      "Offer",
+      "求职",
+      "面试",
+      "应届生",
+      "Alipay 支付宝",
+      "TikTok 字节跳动",
+      "Zoom",
+      "Goldman Sachs 高盛",
+      "NewsBreak",
+      "Amazon 亚马逊"
+    ],
+    "category": "Job",
+    "requireLogin": false
+  },
+  {
+    "sourceType": "EXPERIENCE",
+    "sourceId": "6",
+    "title": "CuraStone Corp",
+    "summary": "Backend Developer Intern",
+    "tags": [],
+    "category": "Experience"
+  },
+  {
+    "sourceType": "EXPERIENCE",
+    "sourceId": "5",
+    "title": "Goldman Sachs",
+    "summary": "Software Engineer - Full-time",
+    "tags": [],
+    "category": "Experience"
+  }
+]

@@ -8,6 +8,7 @@ import { invokeGatewayTool } from './gateway-client.js';
 import { publicSocialProfiles } from './public-profiles.js';
 import { sanitizeContentItem, sanitizeContentDetail, sanitizeProfile } from './sanitize.js';
 import { z } from 'zod';
+import { searchContent } from './search/service.js';
 
 const contentIdSchema = z.union([z.string(), z.number()])
   .transform(String)
@@ -32,38 +33,27 @@ export const tools = [
     },
     annotations: PUBLIC_ANNOTATIONS,
     handler: async (args) => {
-      const requestedTypes = args.types?.length ? [...new Set(args.types)] : [undefined];
       const limit = Math.max(1, Math.min(args.limit ?? 12, 20));
-      const items = new Map();
-      async function retrieve(keyword) {
-        // Apply type before the upstream limit; otherwise unrelated projects can hide article matches.
-        for (const sourceType of requestedTypes) {
-          const result = await invokeGatewayTool('admin.search_content', { keyword, sourceType, limit,
-            ...(args.category ? { category: args.category } : {}) });
-          for (const raw of result?.items ?? result?.content ?? []) {
-            const item = sanitizeContentItem(raw);
-            if (!item || (sourceType && normalizeContentType(item.type) !== sourceType)) continue;
-            items.set(`${normalizeContentType(item.type)}:${item.id}`, item);
-          }
+      const result = await searchContent({ ...args, limit });
+      let knowledge = null;
+      let evidenceStatus = 'NOT_REQUESTED';
+      if (result.total === 0 || result.results.some(item => item.sourceRequiresLogin)) {
+        try {
+          knowledge = await invokeGatewayTool('portfolio.search_public_knowledge',
+            { query: args.query, limit: Math.min(limit, 6) }, undefined, { timeoutMs: 8000 });
+          evidenceStatus = 'AVAILABLE';
+        } catch (error) {
+          if (!result.total) throw error;
+          // A knowledge outage must not erase independently verified article matches.
+          evidenceStatus = 'UNAVAILABLE';
         }
       }
-      await retrieve(args.query);
-      const terms = searchTerms(args.query);
-      const fallback = items.size === 0 && terms.length > 1;
-      if (fallback) {
-        // Bounded OR fallback for mixed-language keywords, without a topic-specific synonym dictionary.
-        for (const term of terms) await retrieve(term);
-      }
-      const knowledge = items.size === 0 || [...items.values()].some(item => item.sourceRequiresLogin)
-        ? await invokeGatewayTool('portfolio.search_public_knowledge', { query: args.query, limit: Math.min(limit, 6) })
-        : null;
-      return { ...buildPortfolioSearchResult(args.query, [...items.values()], limit),
-        evidence: knowledge?.evidence ?? [], evidenceTotal: knowledge?.total ?? 0,
-        status: items.size || knowledge?.total ? 'EVIDENCE_FOUND' : 'NO_EVIDENCE',
-        searchMode: fallback ? 'keyword_union' : 'phrase',
+      return { ...result,
+        evidence: knowledge?.evidence ?? [], evidenceTotal: knowledge?.total ?? 0, evidenceStatus,
+        status: result.total || knowledge?.total ? 'EVIDENCE_FOUND' : 'NO_EVIDENCE',
         searchedTypes: args.types ?? ['PROJECT', 'BLOG', 'LIFE_BLOG', 'EXPERIENCE'],
-        guidance: 'Read matching records and evidence before making factual claims. A keyword miss is not proof of absence. Evidence may come from owner-approved answers even when there are no matching articles. Restricted source records require admin login.',
-        ...(fallback ? { queryTerms: terms } : {}) };
+        guidance: 'Read matching records and evidence before making factual claims. A keyword miss is not proof of absence. Restricted original articles require sign-in; search result links do not bypass access checks.'
+          + (evidenceStatus === 'UNAVAILABLE' ? ' Knowledge evidence is temporarily unavailable; these are article previews only, not verified answers to personal questions.' : '') };
     },
   },
 
@@ -77,14 +67,13 @@ export const tools = [
     },
     annotations: PUBLIC_ANNOTATIONS,
     handler: async (args) => {
-      const result = await invokeGatewayTool('admin.search_content', {
-        keyword: args.keyword,
-        sourceType: 'PROJECT',
+      const result = await searchContent({
+        query: args.keyword,
+        types: ['PROJECT'],
         category: args.category,
         limit: Math.min(args.limit ?? 10, 20),
       });
-      const items = (result?.items ?? result?.content ?? []).map(sanitizeContentItem).filter(Boolean);
-      return { projects: items, total: items.length };
+      return { projects: result.results, total: result.total, modelVersion: result.modelVersion, requestId: result.requestId };
     },
   },
 
@@ -155,8 +144,9 @@ export const tools = [
         category: args.category, limit: Math.min(args.limit ?? 10, 20),
       });
       return { articles: result.results, total: result.total, evidence: result.evidence,
-        evidenceTotal: result.evidenceTotal, status: result.status, searchedTypes: result.searchedTypes,
-        searchMode: result.searchMode, guidance: result.guidance };
+        evidenceTotal: result.evidenceTotal, evidenceStatus: result.evidenceStatus, status: result.status, searchedTypes: result.searchedTypes,
+        searchMode: result.searchMode, guidance: result.guidance, requestId: result.requestId,
+        modelVersion: result.modelVersion, indexVersion: result.indexVersion, coverage: result.coverage };
     },
   },
 

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "version": "pairwise-lr-fbf92032fb30",
+  "features": [
+    "lexical",
+    "fuzzy",
+    "titleCoverage",
+    "tagCoverage",
+    "summaryCoverage",
+    "titlePhrase",
+    "tagPhrase",
+    "coverage"
+  ],
+  "weights": [
+    0.44732801512138903,
+    0.7556880585464397,
+    1.5440014063213048,
+    0.03371217157415444,
+    1.481783051724461,
+    0.35807580470607697,
+    0.9833693528207377,
+    1.8148803712161683
+  ],
+  "trainingPairs": 110,
+  "indexVersion": "709fc73506ff4049",
+  "labelSource": "provisional author-curated relevance judgments, not visitor-derived labels"
+}

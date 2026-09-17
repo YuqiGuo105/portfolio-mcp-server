@@ -58,7 +58,7 @@ Connect &rarr; sign in &rarr; approve access &rarr; use permitted tools.
 
 <p align="center">
   <a href="docs/screenshots/admin-sign-in.png">
-    <img src="docs/screenshots/admin-sign-in.png" alt="Administrator login with email/password and Google; public registration is disabled" width="480" />
+    <img src="docs/screenshots/admin-sign-in.png" alt="Administrator login with email/password and Google; public registration is disabled" width="390" />
   </a>
 </p>
 <p align="center"><sub>Sign in with an existing authorized account. Public registration is disabled.</sub></p>

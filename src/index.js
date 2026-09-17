@@ -21,6 +21,7 @@ import { tools } from './tools.js';
 import { adminTools } from './admin-tools.js';
 import { verifyAdminAuth, AuthError } from './admin-auth.js';
 import http from 'node:http';
+import { handleSearch } from './search/http.js';
 import { pathToFileURL } from 'node:url';
 import { operationContext, recordToolCall } from './operation-events.js';
 import { analyzeVisitorTraffic } from './visitor-traffic-analysis.js';
@@ -232,9 +233,14 @@ function toolError(error) {
 
 // ── HTTP Server with Streamable HTTP Transport ───────────────────────────
 
-export function createHttpServer({ diagnosticsProbe } = {}) {
+export function createHttpServer({ diagnosticsProbe, search } = {}) {
   return http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
+
+  if (url.pathname === '/api/search') {
+    await handleSearch(req, res, url, search);
+    return;
+  }
 
   if (url.pathname === '/mcp/diagnostics') {
     await handleConnectionDiagnostics(req, res, { createPublic: createServer, createAdmin: principal => createAdminServer(principal, undefined, { diagnosticsProbe }),

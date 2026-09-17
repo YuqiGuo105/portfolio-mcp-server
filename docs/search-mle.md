@@ -47,6 +47,9 @@ is claimed. If neither retrieval path is available, the tool returns an error.
 
 The serving catalog has a 60-second single-flight cache, 12-second total refresh
 budget, maximum 8 seconds per upstream request and a 10-second failure backoff.
+Word segmentation consumes each record immediately instead of retaining segment
+objects for entire articles. A 64 MB heap regression test rebuilds sixteen
+40,000-character bilingual documents twice and verifies tail-term recall.
 Expired permission metadata is not served on refresh failure. Body projection is
 capped at 40,000 characters with explicit truncation metadata. A collection with
 50 or more rows fails explicitly until paginated ingestion is implemented;

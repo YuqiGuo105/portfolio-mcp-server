@@ -11,7 +11,13 @@ export function normalize(text) {
 }
 
 export function tokens(text) {
-  return [...segmenter.segment(normalize(text))].filter(x => x.isWordLike && !stopWords.has(x.segment)).map(x => x.segment).slice(0, 40000);
+  const result = [];
+  // Segment records retain the full input; consume them without materializing an array.
+  for (const item of segmenter.segment(normalize(text))) {
+    if (item.isWordLike && !stopWords.has(item.segment)) result.push(item.segment);
+    if (result.length >= 40000) break;
+  }
+  return result;
 }
 
 function grams(text) {

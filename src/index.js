@@ -27,6 +27,14 @@ import { operationContext, recordToolCall } from './operation-events.js';
 import { analyzeVisitorTraffic } from './visitor-traffic-analysis.js';
 import { registerWorkspace } from './workspace.js';
 import { createToolRegistry } from './tool-registry.js';
+import { createDiscoveryTools, registeredToolEntries } from './tool-discovery.js';
+import {
+  isWriteTool,
+  operationAwaitingConfirmation,
+  operationFailed,
+  operationIsError,
+  operationSucceeded,
+} from './operation-status.js';
 import { registerConnectionCheck, handleConnectionDiagnostics } from './connection-diagnostics.js';
 import {
   annotationsForTool,
@@ -143,13 +151,19 @@ export async function createAdminServer(authContext, catalogLoader = loadToolCat
       },
       async (args) => {
         const startedAt = Date.now();
+        const write = isWriteTool(tool);
+        const operationId = operationIdFor(args);
         try {
           const result = await tool.handler(args, authContext);
           await recordToolCall({ context: requestContext, toolName: tool.name, status: 'completed', durationMs: Date.now() - startedAt });
-          return toolResult(result);
+          if (!write) return toolResult(result);
+          const receipt = operationSucceeded({ tool, operationId, result });
+          return toolResult(receipt, { isError: operationIsError(receipt) });
         } catch (err) {
           await recordToolCall({ context: requestContext, toolName: tool.name, status: 'failed', durationMs: Date.now() - startedAt, errorCode: err.name || 'ToolError' });
-          return toolError(err);
+          return write
+            ? toolResult(operationFailed({ tool, operationId, error: err }), { isError: true })
+            : toolError(err);
         }
       }
     );
@@ -171,16 +185,32 @@ export async function createAdminServer(authContext, catalogLoader = loadToolCat
   }
 
   registerConnectionCheck(registry, { surface: 'admin', principal: authContext, requestContext, probe: diagnosticsProbe });
+  const discoveryEntries = registeredToolEntries(registry.entries(), catalog);
+  for (const discovery of createDiscoveryTools(discoveryEntries)) {
+    registry.registerTool(discovery.name, {
+      description: discovery.description,
+      inputSchema: discovery.zodSchema,
+      annotations: discovery.annotations,
+    }, async (args) => toolResult(await discovery.handler(args)));
+  }
   return srv;
 }
 
 async function executeCatalogTool(tool, rawArgs, authContext, requestContext) {
   const startedAt = Date.now();
+  let operationId = operationIdFor(rawArgs);
   try {
-    if (requiresExplicitConfirmation(tool, rawArgs)) {
-      throw new Error('Explicit user confirmation is required before this operation can run');
-    }
     const { args, context } = invocationForTool(tool, rawArgs, authContext);
+    operationId = context.idempotencyKey || operationId;
+    if (requiresExplicitConfirmation(tool, rawArgs)) {
+      await recordToolCall({
+        context: requestContext,
+        toolName: tool.name,
+        status: 'waiting_confirmation',
+        durationMs: Date.now() - startedAt,
+      });
+      return toolResult(operationAwaitingConfirmation({ tool, operationId }), { isError: true });
+    }
     const result = isOwnerAdminTool(tool.name)
       ? tool.mode === 'WRITE'
         ? await invokeOwnerWrite(tool.name,args,context,() => invokeOwnerAdminTool(tool.name,stripControlArguments(args),authContext))
@@ -193,7 +223,9 @@ async function executeCatalogTool(tool, rawArgs, authContext, requestContext) {
       status: 'completed',
       durationMs: Date.now() - startedAt,
     });
-    return toolResult(response);
+    if (tool.mode !== 'WRITE') return toolResult(response);
+    const receipt = operationSucceeded({ tool, operationId, result: response });
+    return toolResult(receipt, { isError: operationIsError(receipt) });
   } catch (error) {
     await recordToolCall({
       context: requestContext,
@@ -202,8 +234,14 @@ async function executeCatalogTool(tool, rawArgs, authContext, requestContext) {
       durationMs: Date.now() - startedAt,
       errorCode: error.name || 'ToolError',
     });
-    return toolError(error);
+    return tool.mode === 'WRITE'
+      ? toolResult(operationFailed({ tool, operationId, error }), { isError: true })
+      : toolError(error);
   }
+}
+
+function operationIdFor(args = {}) {
+  return args._idempotencyKey || args.idempotencyKey || null;
 }
 
 function stripControlArguments(args) {
@@ -213,12 +251,13 @@ function stripControlArguments(args) {
   return result;
 }
 
-function toolResult(result) {
+function toolResult(result, { isError = false } = {}) {
   return {
     content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
     ...(result && typeof result === 'object' && !Array.isArray(result)
       ? { structuredContent: result }
       : {}),
+    ...(isError ? { isError: true } : {}),
   };
 }
 

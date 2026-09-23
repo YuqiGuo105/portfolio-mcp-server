@@ -19,7 +19,7 @@ export function createToolRegistry(server) {
     registerTool(name, config, handler) {
       const registered = server.registerTool(name, config, handler);
       const schema = typeof config.inputSchema?.safeParse === 'function' ? config.inputSchema : z.object(config.inputSchema || {});
-      definitions.set(name, { name, schema, registered });
+      definitions.set(name, { name, schema, config, registered });
       return registered;
     },
     registerResource: (...args) => server.registerResource(...args),

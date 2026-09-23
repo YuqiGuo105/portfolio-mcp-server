@@ -21,7 +21,11 @@ export async function recordToolCall({ context, toolName, status, durationMs, er
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   const event = {
     eventId,
-    eventType: status === 'failed' ? 'mcp.tool.failed' : 'mcp.tool.completed',
+    eventType: status === 'failed'
+      ? 'mcp.tool.failed'
+      : status === 'waiting_confirmation'
+        ? 'mcp.tool.waiting_confirmation'
+        : 'mcp.tool.completed',
     schemaVersion: 1,
     occurredAt: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'production',

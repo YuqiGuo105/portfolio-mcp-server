@@ -94,6 +94,10 @@ The **Java gateway and domain services** enforce policy, track operations, and o
 and explicit recovery for uncertain writes. A timeout is not treated as permission
 to repeat an action.
 
+Authenticated clients can resolve current, permission-scoped tools through
+`catalog.search` and `catalog.recommend`. Every write returns the same operational
+receipt fields: `operationId`, `status`, `retryable`, and `nextAction`.
+
 ## Technical Details
 
 [Client setup](docs/CLIENT_INTEGRATIONS.md) &middot;

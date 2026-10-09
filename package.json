@@ -13,17 +13,20 @@
     "check": "node --check src/index.js && node --check src/catalog-client.js && node --check src/tool-discovery.js && node --check src/operation-status.js && node --check src/admin-auth.js && node --check src/oauth-resource.js && node --check src/workspace.js && node --check src/connection-diagnostics.js && node --check src/tool-registry.js && node --check web/workspace.js && node --check scripts/verify-workspace-live.mjs && node --check scripts/check-connection.mjs && node scripts/validate-client-integrations.mjs"
   },
   "dependencies": {
+    "@mixmark-io/domino": "2.2.0",
     "@modelcontextprotocol/ext-apps": "1.1.2",
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/sdk": "1.31.0",
     "fastest-levenshtein": "1.0.16",
     "isbot": "5.2.2",
     "jose": "^6.2.3",
     "lucide": "0.468.0",
+    "turndown": "7.2.4",
+    "turndown-plugin-gfm": "1.0.2",
     "wink-bm25-text-search": "3.1.2",
     "zod": "^4.4.3"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "private": true,
   "devDependencies": {

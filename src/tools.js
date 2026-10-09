@@ -4,11 +4,13 @@
  * They call the existing MCP Gateway internally.
  */
 
-import { invokeGatewayTool } from './gateway-client.js';
+import { invokeGatewayTool, GatewayError } from './gateway-client.js';
 import { publicSocialProfiles } from './public-profiles.js';
 import { sanitizeContentItem, sanitizeContentDetail, sanitizeProfile } from './sanitize.js';
 import { z } from 'zod';
 import { searchContent } from './search/service.js';
+import { storedMermaid, plainText } from './content-format.js';
+import { searchDocument } from './search/catalog.js';
 
 const contentIdSchema = z.union([z.string(), z.number()])
   .transform(String)
@@ -30,6 +32,7 @@ export const tools = [
       types: z.array(z.enum(['PROJECT', 'BLOG', 'LIFE_BLOG', 'EXPERIENCE'])).min(1).max(4).optional()
         .describe('Optional content types to include; defaults to all public portfolio content'),
       limit: z.number().min(1).max(20).optional().describe('Maximum total results (1-20, default 12)'),
+      diagnostics: z.boolean().optional().describe('Include ranking and index diagnostics; off by default'),
     },
     annotations: PUBLIC_ANNOTATIONS,
     handler: async (args) => {
@@ -48,7 +51,7 @@ export const tools = [
           evidenceStatus = 'UNAVAILABLE';
         }
       }
-      return { ...result,
+      return { ...compactSearch(result, args.diagnostics),
         evidence: knowledge?.evidence ?? [], evidenceTotal: knowledge?.total ?? 0, evidenceStatus,
         status: result.total || knowledge?.total ? 'EVIDENCE_FOUND' : 'NO_EVIDENCE',
         searchedTypes: args.types ?? ['PROJECT', 'BLOG', 'LIFE_BLOG', 'EXPERIENCE'],
@@ -57,6 +60,29 @@ export const tools = [
     },
   },
 
+  ...['PROJECT', 'BLOG'].map(sourceType => ({
+    name: sourceType === 'PROJECT' ? 'list_projects' : 'list_articles',
+    description: sourceType === 'PROJECT'
+      ? 'List published project previews without a keyword. Follow pagination.nextPage to continue.'
+      : 'List article previews without a keyword. Select BLOG (default) or LIFE_BLOG; restricted originals still require sign-in.',
+    zodSchema: {
+      ...(sourceType === 'BLOG' ? { sourceType: z.enum(['BLOG', 'LIFE_BLOG']).optional() } : {}),
+      page: z.object({ size: z.number().int().min(1).max(50).default(20), number: z.number().int().min(0).max(1000).default(0) }).optional(),
+    },
+    annotations: PUBLIC_ANNOTATIONS,
+    handler: async args => {
+      const size = args.page?.size ?? 20;
+      const number = args.page?.number ?? 0;
+      const result = await invokeGatewayTool('admin.search_content', {
+        sourceType: args.sourceType ?? sourceType, limit: size, offset: number * size,
+      });
+      if (!Array.isArray(result?.items)) throw new Error('Content listing is temporarily unavailable.');
+      const items = result.items.map(searchDocument).filter(Boolean).map(({ searchText, textCoverage, key, ...item }) => item);
+      const hasMore = result.items.length === size;
+      return { items, pagination: { size, number, hasMore, ...(hasMore ? { nextPage: { size, number: number + 1 } } : {}) } };
+    },
+  })),
+
   {
     name: 'search_projects',
     description: 'Search Yuqi\'s portfolio projects by technology, architecture pattern, or keyword. Returns matching projects with titles, tech stacks, and URLs.',
@@ -64,6 +90,7 @@ export const tools = [
       keyword: z.string().describe('Search keyword (technology, pattern, or topic)'),
       category: z.string().optional().describe('Optional category filter'),
       limit: z.number().min(1).max(20).optional().describe('Max results (1-20, default 10)'),
+      diagnostics: z.boolean().optional(),
     },
     annotations: PUBLIC_ANNOTATIONS,
     handler: async (args) => {
@@ -73,7 +100,8 @@ export const tools = [
         category: args.category,
         limit: Math.min(args.limit ?? 10, 20),
       });
-      return { projects: result.results, total: result.total, modelVersion: result.modelVersion, requestId: result.requestId };
+      const { results, ...metadata } = compactSearch(result, args.diagnostics);
+      return { projects: results, ...metadata };
     },
   },
 
@@ -82,14 +110,16 @@ export const tools = [
     description: 'Get detailed information about a specific portfolio project including problem statement, implementation details, technical decisions, and links.',
     zodSchema: {
       projectId: contentIdSchema,
+      offset: z.number().int().min(0).max(2000000).optional().describe('Use nextOffset to read the next Markdown page'),
+      format: z.enum(['markdown', 'html']).optional().describe('Markdown by default; HTML only for clients parsing stored tables'),
     },
     annotations: PUBLIC_ANNOTATIONS,
     handler: async (args) => {
-      const result = await invokeGatewayTool('admin.get_content', {
+      const result = await readPublicContent({
         sourceType: 'PROJECT',
         sourceId: args.projectId,
       });
-      return sanitizeContentDetail(result) ?? { error: 'Project not found' };
+      return result?.error ? result : sanitizeContentDetail(result, { offset: args.offset ?? 0, format: args.format ?? 'markdown' }) ?? notFound();
     },
   },
 
@@ -101,20 +131,17 @@ export const tools = [
     },
     annotations: PUBLIC_ANNOTATIONS,
     handler: async (args) => {
-      const result = await invokeGatewayTool('admin.get_content', {
+      const result = await readPublicContent({
         sourceType: 'PROJECT',
         sourceId: args.projectId,
       });
+      if (result?.error) return result;
       const content = result?.content && typeof result.content === 'object' ? result.content : result;
-      if (!content) return { error: 'Project not found' };
+      if (!content) return notFound();
+      if (sanitizeContentItem(content)?.sourceRequiresLogin) return sanitizeContentDetail(content);
       // Extract architecture sections from the project body
       const body = content.body ?? content.content ?? '';
-      const mermaidBlocks = [];
-      const mermaidRegex = /```mermaid\n([\s\S]*?)```/g;
-      let match;
-      while ((match = mermaidRegex.exec(body)) !== null) {
-        mermaidBlocks.push(match[1].trim());
-      }
+      const mermaidBlocks = storedMermaid(body);
       return {
         projectId: args.projectId,
         title: content.title,
@@ -136,12 +163,13 @@ export const tools = [
       category: z.string().optional().describe('Optional category filter'),
       sourceType: z.enum(['BLOG', 'LIFE_BLOG']).optional().describe('Optional article collection; omitted searches both technical and life/travel posts'),
       limit: z.number().min(1).max(20).optional().describe('Max results (1-20, default 10)'),
+      diagnostics: z.boolean().optional(),
     },
     annotations: PUBLIC_ANNOTATIONS,
     handler: async (args) => {
       const result = await tools.find(tool => tool.name === 'search_portfolio').handler({
         query: args.keyword, types: args.sourceType ? [args.sourceType] : ['BLOG', 'LIFE_BLOG'],
-        category: args.category, limit: Math.min(args.limit ?? 10, 20),
+        category: args.category, limit: Math.min(args.limit ?? 10, 20), diagnostics: args.diagnostics,
       });
       return { articles: result.results, total: result.total, evidence: result.evidence,
         evidenceTotal: result.evidenceTotal, evidenceStatus: result.evidenceStatus, status: result.status, searchedTypes: result.searchedTypes,
@@ -160,11 +188,11 @@ export const tools = [
     },
     annotations: PUBLIC_ANNOTATIONS,
     handler: async (args) => {
-      const result = await invokeGatewayTool('admin.get_content', {
+      const result = await readPublicContent({
         sourceType: args.sourceType ?? (/^\d+$/.test(String(args.articleId)) ? 'LIFE_BLOG' : 'BLOG'),
         sourceId: args.articleId,
       });
-      return sanitizeContentDetail(result, { offset: args.offset ?? 0 }) ?? { error: 'Article not found' };
+      return result?.error ? result : sanitizeContentDetail(result, { offset: args.offset ?? 0 }) ?? notFound();
     },
   },
 
@@ -209,7 +237,7 @@ export const tools = [
       });
       const items = result?.items ?? result?.content ?? [];
       const socialProfiles = publicSocialProfiles();
-      return { ...sanitizeProfile({ experience: items }), ...profile,
+      return { ...profile, ...sanitizeProfile({ ...profile, experience: items }),
         socialProfiles,
         status: profile.profileEvidence?.length || items.length || socialProfiles.length
           ? 'EVIDENCE_FOUND' : 'NO_EVIDENCE',
@@ -218,6 +246,33 @@ export const tools = [
     },
   },
 ];
+
+function compactSearch(result, diagnostics = false) {
+  if (diagnostics) return result;
+  return { query: result.query, total: result.total, results: result.results.map(({ rank, key, ...item }) => ({
+    ...item, summary: plainText(item.summary),
+  })) };
+}
+
+function notFound() {
+  return { error: 'NOT_FOUND', guidance: 'Use search_portfolio or list_projects/list_articles to find a valid content ID and type.' };
+}
+
+async function readPublicContent(args) {
+  try {
+    const result = await invokeGatewayTool('admin.get_content', args);
+    const item = result?.content && typeof result.content === 'object' ? result.content : result;
+    const status = String(item?.status ?? item?.raw?.status ?? '').toUpperCase();
+    const visibility = String(item?.visibility ?? item?.raw?.visibility ?? '').toUpperCase();
+    if (!item || (status && !['PUBLISHED', 'ACTIVE'].includes(status)) || ['PRIVATE', 'ADMIN', 'OWNER'].includes(visibility)) return notFound();
+    return result;
+  } catch (error) {
+    if (error instanceof GatewayError && ([400, 404].includes(error.details?.httpStatus)
+        || /Downstream returned HTTP (400|404)\b/.test(error.message))) return notFound();
+    // Do not expose service URLs, internal tool names or downstream payloads.
+    throw new Error('Content is temporarily unavailable. Please try again later.');
+  }
+}
 
 export function buildPortfolioSearchResult(query, items, limit = 12) {
   const ranked = [...items]

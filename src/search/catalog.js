@@ -1,4 +1,5 @@
 import { createSearchEngine } from './engine.js';
+import { plainText } from '../content-format.js';
 
 export const SEARCH_TYPES = ['BLOG', 'PROJECT', 'LIFE_BLOG', 'EXPERIENCE'];
 const paths = { BLOG: 'blog-single', PROJECT: 'work-single', LIFE_BLOG: 'life-blog' };
@@ -14,7 +15,7 @@ export function searchDocument(raw) {
       || /^\[superseded\b/i.test(raw.title ?? '')) return null;
   const text = (v, max) => String(v ?? '').slice(0, max);
   const doc = {
-    id, key: `${type}:${id}`, type, title: text(raw.title, 500), summary: text(raw.summary ?? raw.description, 2000),
+    id, key: `${type}:${id}`, type, title: text(raw.title, 500), summary: plainText(raw.summary ?? raw.description) ?? '',
     tags: (Array.isArray(raw.tags) ? raw.tags : []).filter(t => typeof t === 'string').slice(0, 80).map(t => t.slice(0, 120)),
     category: text(raw.category, 120),
     url: type === 'EXPERIENCE' ? 'https://www.yuqi.site/cv' : `https://www.yuqi.site/${paths[type]}/${id}`,

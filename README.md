@@ -27,6 +27,19 @@ knowledge and help authorized administrators operate the platform.
 
 **Stack:** Node.js &middot; MCP SDK &middot; Zod &middot; OAuth/JWT &middot; Java/Spring
 
+### Public content tools
+
+The public endpoint exposes 12 read-only tools, including connection diagnostics.
+Use `list_projects` or `list_articles` with `page: {size: 20, number: 0}` to browse
+without keywords; follow `pagination.nextPage`. Article lists default to `BLOG`;
+select `sourceType: "LIFE_BLOG"` for personal articles. Sign-in requirements remain
+in effect for restricted originals. Detail bodies are Markdown; both article and
+project details accept `offset` from `nextOffset`. Architecture reads support
+stored Mermaid fences and HTML Mermaid blocks. Search responses omit duplicate
+groups and ranking metadata unless `diagnostics: true` is requested.
+
+Runtime: Node.js 24 LTS. The production container runs as the unprivileged `node` user.
+
 ## Public Edition
 
 **Explore the portfolio from an AI conversation. No portfolio login required.**

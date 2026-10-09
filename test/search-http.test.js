@@ -38,8 +38,9 @@ test('HTTP and MCP use the same ranked catalog without exposing protected bodies
   const result = await client.callTool({ name: 'search_articles', arguments: { keyword: '盐湖城' } });
   assert.ok(!result.isError);
   const mcp = JSON.parse(result.content[0].text);
-  assert.equal(mcp.articles[0].key, http.results[0].key);
-  assert.equal(mcp.modelVersion, http.modelVersion);
+  assert.equal(mcp.articles[0].id, http.results[0].id);
+  assert.equal(mcp.articles[0].type, http.results[0].type);
+  assert.equal(mcp.modelVersion, undefined);
   assert.ok(!JSON.stringify(mcp).includes('INTERNAL_BODY'));
   assert.equal(calls, 4, 'both transports reuse the bounded catalog');
   assert.equal((await fetch(`${base}/api/search?q=x&types=PRIVATE`)).status, 400);

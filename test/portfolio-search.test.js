@@ -25,8 +25,9 @@ test('mixed language query uses a bounded catalog and filters before ranking', a
   assert.equal(result.groups, undefined);
   assert.equal(result.modelVersion, undefined);
   assert.equal(result.results[0].rank, undefined);
-  assert.equal(calls.length, 4);
-  assert.ok(calls.every(c => c.limit === 50 && c.keyword === undefined));
+  assert.equal(calls.length, 5);
+  assert.ok(calls.filter(c => !c.sourceId).every(c => c.limit === 50 && c.keyword === undefined));
+  assert.equal(result.results[0].snippetStatus, 'UNAVAILABLE', 'malformed live read must not expose cached text');
 });
 
 test('upstream failure is not misrepresented as zero search results', async t => {

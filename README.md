@@ -29,7 +29,12 @@ knowledge and help authorized administrators operate the platform.
 
 ### Public content tools
 
-The public endpoint exposes 12 read-only tools, including connection diagnostics.
+The public endpoint exposes 14 read-only tools, including connection diagnostics.
+Start with `get_overview` for a maintained introduction, `search_portfolio` for
+source-linked excerpts, or `match_role` for evidence against up to eight job requirements.
+`search_knowledge` combines semantic retrieval with lexical evidence; the older
+project/article searches remain filtered compatibility aliases.
+
 Use `list_projects` or `list_articles` with `page: {size: 20, number: 0}` to browse
 without keywords; follow `pagination.nextPage`. Article lists default to `BLOG`;
 select `sourceType: "LIFE_BLOG"` for personal articles. Sign-in requirements remain

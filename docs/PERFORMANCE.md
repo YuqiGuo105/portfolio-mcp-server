@@ -39,6 +39,30 @@ prefetch: a health check or social-link lookup must not wake Java services just
 to fill an unused or soon-expired search cache. This does not eliminate genuine
 cold starts, and actual billing depends on traffic and logging volume.
 
+## Evidence without more model calls
+
+- `get_overview` reads a checked-in, dated editorial card. It has no network cost
+  and is not a claim about live employment or deployment state.
+- `search_portfolio` returns at most three 650-character excerpts. Each uses a
+  fresh authorized source read, in parallel; cached full text never leaves the
+  ranking engine. `includeSnippets: false` retains metadata-only latency.
+  This can add one backend round trip to a cache hit, but avoids an additional
+  client/model tool round when the excerpt answers the question.
+- `search_knowledge` overlaps its existing semantic call with lexical recall,
+  then merges source-deduplicated evidence. It adds no embedding/model calls.
+  A semantic outage can return independently verified lexical evidence with an
+  explicit coverage warning; no evidence plus an outage is an error, not absence.
+- `match_role` accepts at most eight client-extracted requirements. It shares one
+  catalog, deduplicates candidate reads, caps them at eight with concurrency three,
+  and returns two quotes per requirement at most. No LLM or fit score is used.
+- The knowledge service checks current content-table access in bounded batches,
+  including publication status and `life_blogs.require_login`. Legacy versioned
+  chunks are usable only after that check. Restricted original text is not public
+  evidence; separately reviewed PROFILE/OWNER_QA answers keep their own approval gate.
+
+No schema migration, bulk re-embedding, background timer, or larger instance is
+required for this change. Per-request reads are bounded but are not literally free.
+
 ## Measurement
 
 Run the same small, public, read-only sample before and after a release:

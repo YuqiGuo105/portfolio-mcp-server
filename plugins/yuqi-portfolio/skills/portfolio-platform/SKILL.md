@@ -11,7 +11,9 @@ portfolio content.
 ## Response contract
 
 - Reply in the same language as the user's latest message unless they request another language.
-- Prefer search tools to discover records, then use the matching get tool for full details.
+- Start with `get_overview` for a quick introduction. It is a maintained, dated card, not a live status check.
+- Prefer one `search_portfolio` call for discovery; its live-source excerpts may already answer the question. Use detail tools only when more context is needed. Project/article searches are compatibility aliases, not extra required steps.
+- For a job description, extract up to eight specific requirements and call `match_role` once. Quotes are related evidence, not proof of every requirement or years of experience. Report gaps without inventing qualifications; never turn the response into an automated hiring decision.
 - Invoke only callables present in the current runtime tool registry. Never type,
   infer, or transform a display label such as `Portfolio:search_portfolio` into
   a callable name. If a tool is not loaded, refresh tool discovery and invoke

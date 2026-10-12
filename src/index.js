@@ -61,7 +61,8 @@ const TOOL_INVOCATION_INSTRUCTIONS = [
   'The protocol-level portfolio-wide search tool is named "search_portfolio"; clients may expose it through a generated namespaced callable.',
   'If a callable is unavailable, refresh tool discovery and use the newly registered callable instead of retrying a guessed name.',
   'Prefer one search_portfolio call for cross-content discovery; search_projects and search_articles are compatible filtered alternatives, not mandatory additional steps.',
-  'Use get_profile for public education and work history. Read a detail record only when the returned preview or approved evidence is insufficient for the question.',
+  'Use get_overview for a quick introduction, get_profile for live public education and work history, and match_role for source-linked evidence against job requirements.',
+  'Search includes short public excerpts; read a detail record only when the returned excerpt or approved evidence is insufficient. Related evidence does not establish every requirement. Never infer skills or years from a match alone.',
 ].join(' ');
 
 // ── Create MCP Server ────────────────────────────────────────────────────

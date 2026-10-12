@@ -1,6 +1,7 @@
 import { createSearchEngine } from './engine.js';
 import { plainText } from '../content-format.js';
 import { recordPhase } from '../tool-timings.js';
+import { contentRequiresLogin } from '../sanitize.js';
 
 export const SEARCH_TYPES = ['BLOG', 'PROJECT', 'LIFE_BLOG', 'EXPERIENCE'];
 const paths = { BLOG: 'blog-single', PROJECT: 'work-single', LIFE_BLOG: 'life-blog' };
@@ -21,7 +22,7 @@ export function searchDocument(raw) {
     category: text(raw.category, 120),
     url: type === 'EXPERIENCE' ? 'https://www.yuqi.site/cv' : `https://www.yuqi.site/${paths[type]}/${id}`,
     // Lists do not always carry access flags. Fail closed for life-post previews.
-    sourceRequiresLogin: Boolean(raw.search?.requiresLogin ?? raw.requireLogin ?? raw.require_login ?? raw.raw?.require_login ?? (type === 'LIFE_BLOG')),
+    sourceRequiresLogin: contentRequiresLogin(raw),
     searchText: typeof raw.search?.text === 'string' ? raw.search.text.slice(0, 40000) : '',
     textCoverage: raw.search?.schemaVersion === 1 ? (raw.search.truncated ? 'truncated' : 'full') : 'metadata_only',
   };

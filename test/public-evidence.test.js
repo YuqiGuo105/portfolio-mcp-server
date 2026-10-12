@@ -22,7 +22,7 @@ test('article search covers life/travel posts and keeps category filtering', asy
   assert.equal(result.total, 1);
   assert.equal(result.articles[0].url, 'https://www.yuqi.site/life-blog/2');
   assert.deepEqual(result.searchedTypes, ['BLOG', 'LIFE_BLOG']);
-  assert.equal(calls.length, 4);
+  assert.equal(calls.length, 5);
 });
 
 test('article search supports an explicit technical-only collection', async t => {
@@ -119,7 +119,7 @@ test('article keyword miss falls back to semantic evidence without a city alias 
   mockGateway(t, (url, args) => {
     if (url.includes('portfolio.search_public_knowledge')) {
       assert.equal(args.query, 'SLC');
-      return { evidence: [{ text: 'Owner-approved travel answer', sourceRequiresLogin: true }], total: 1 };
+      return { evidence: [{ text: 'Owner-approved travel answer', sourceType: 'OWNER_QA', review: 'approved', sourceRequiresLogin: true }], total: 1 };
     }
     return { items: [] };
   });
@@ -164,7 +164,7 @@ test('restricted or unknown life-article access does not expose the original bod
 
 test('matching a restricted article still retrieves public-answer evidence', async t => {
   mockGateway(t, (url, args) => {
-    if (url.includes('portfolio.search_public_knowledge')) return { evidence: [{ text: 'Approved public travel fact' }], total: 1 };
+    if (url.includes('portfolio.search_public_knowledge')) return { evidence: [{ text: 'Approved public travel fact', sourceType: 'OWNER_QA', review: 'approved' }], total: 1 };
     return { items: args.sourceType === 'LIFE_BLOG'
       ? [{ sourceType: 'LIFE_BLOG', sourceId: '2', title: 'Travel', tags: ['Chicago'], raw: { require_login: true } }] : [] };
   });

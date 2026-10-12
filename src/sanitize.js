@@ -8,12 +8,17 @@ import { contentMarkdown, plainText } from './content-format.js';
 const SITE_URL = process.env.SITE_URL || 'https://www.yuqi.site';
 const MAX_CONTENT_LENGTH = Number(process.env.MAX_CONTENT_LENGTH) || 8000;
 
+export function contentRequiresLogin(item) {
+  const type = String(item.sourceType ?? item.type ?? '').toUpperCase();
+  const flag = item.requireLogin ?? item.require_login ?? item.raw?.require_login ?? item.search?.requiresLogin;
+  return flag === undefined ? ['LIFE', 'LIFE_BLOG'].includes(type) : flag !== false;
+}
+
 export function sanitizeContentItem(item) {
   item = unwrapContent(item);
   if (!item) return null;
   const type = String(item.sourceType ?? item.type ?? '').toUpperCase();
-  const requiresLogin = item.requireLogin ?? item.require_login ?? item.raw?.require_login
-    ?? (type === 'LIFE' || type === 'LIFE_BLOG');
+  const requiresLogin = contentRequiresLogin(item);
   const safe = {
     id: item.sourceId ?? item.id,
     type: item.sourceType ?? item.type,

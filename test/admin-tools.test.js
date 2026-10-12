@@ -54,3 +54,13 @@ test('nested bot policy is preserved and malformed filters cannot silently becom
   assert.deepEqual(schema.parse({ threshold: 2 }), { threshold: 2 });
   assert.equal(tool('apply_alert_rule_change').zodSchema._confirmed.safeParse(false).success, false);
 });
+
+test('source rule filter is exact, normalized, optional for legacy edits and explicitly clearable', () => {
+  const schema = tool('prepare_alert_rule_change').zodSchema.patch;
+  assert.deepEqual(schema.parse({ filters: { bot: 'EXCLUDE', referrerDomain: ' LinkedIn.COM ' } }), { filters: { bot: 'EXCLUDE', referrerDomain: 'linkedin.com' } });
+  assert.equal(schema.parse({ filters: { bot: 'ALL', referrerDomain: '' } }).filters.referrerDomain, '');
+  assert.ok(!Object.hasOwn(schema.parse({ filters: { bot: 'ONLY' } }).filters, 'referrerDomain'));
+  for (const referrerDomain of ['https://linkedin.com', 'a@linkedin.com', 'linkedin.com/path', '-invalid.com']) {
+    assert.equal(schema.safeParse({ filters: { bot: 'ALL', referrerDomain } }).success, false);
+  }
+});

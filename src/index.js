@@ -24,6 +24,7 @@ import http from 'node:http';
 import { handleSearch } from './search/http.js';
 import { pathToFileURL } from 'node:url';
 import { operationContext, recordToolCall } from './operation-events.js';
+import { withToolTimings } from './tool-timings.js';
 import { analyzeVisitorTraffic } from './visitor-traffic-analysis.js';
 import { registerWorkspace } from './workspace.js';
 import { createToolRegistry } from './tool-registry.js';
@@ -59,6 +60,8 @@ const TOOL_INVOCATION_INSTRUCTIONS = [
   'For example, "Portfolio:search_portfolio" is a display label, not a callable tool name.',
   'The protocol-level portfolio-wide search tool is named "search_portfolio"; clients may expose it through a generated namespaced callable.',
   'If a callable is unavailable, refresh tool discovery and use the newly registered callable instead of retrying a guessed name.',
+  'Prefer one search_portfolio call for cross-content discovery; search_projects and search_articles are compatible filtered alternatives, not mandatory additional steps.',
+  'Use get_profile for public education and work history. Read a detail record only when the returned preview or approved evidence is insufficient for the question.',
 ].join(' ');
 
 // ── Create MCP Server ────────────────────────────────────────────────────
@@ -83,19 +86,21 @@ export function createServer(requestContext) {
         inputSchema: tool.zodSchema,
         annotations: tool.annotations,
       },
-      async (args) => {
+      async (args) => withToolTimings(async () => {
         const startedAt = Date.now();
         try {
           const result = await tool.handler(args);
-          await recordToolCall({ context: requestContext, toolName: tool.name, status: 'completed', durationMs: Date.now() - startedAt });
+          const text = JSON.stringify(result);
+          await recordToolCall({ context: requestContext, toolName: tool.name, status: 'completed',
+            durationMs: Date.now() - startedAt, responseBytes: Buffer.byteLength(text) });
           return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            content: [{ type: 'text', text }],
           };
         } catch (err) {
           await recordToolCall({ context: requestContext, toolName: tool.name, status: 'failed', durationMs: Date.now() - startedAt, errorCode: err.name || 'ToolError' });
           return toolError(err);
         }
-      }
+      })
     );
   }
 
@@ -253,7 +258,7 @@ function stripControlArguments(args) {
 
 function toolResult(result, { isError = false } = {}) {
   return {
-    content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+    content: [{ type: 'text', text: JSON.stringify(result) }],
     ...(result && typeof result === 'object' && !Array.isArray(result)
       ? { structuredContent: result }
       : {}),

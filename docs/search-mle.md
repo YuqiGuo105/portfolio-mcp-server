@@ -45,8 +45,10 @@ It is capped at 8 seconds. If it fails after article matches are found, those
 previews remain available with `evidenceStatus: UNAVAILABLE`; no verified answer
 is claimed. If neither retrieval path is available, the tool returns an error.
 
-The serving catalog has a 60-second single-flight cache, 12-second total refresh
-budget, maximum 8 seconds per upstream request and a 10-second failure backoff.
+The serving catalog has a 60-second single-flight cache and a 10-second failure
+backoff. Four content-type reads run in parallel, with an eight-second deadline
+per request inside a twelve-second I/O budget. All reads settle before publishing
+the complete index or returning a failure. See [latency and cost](PERFORMANCE.md).
 Word segmentation consumes each record immediately instead of retaining segment
 objects for entire articles. A 64 MB heap regression test rebuilds sixteen
 40,000-character bilingual documents twice and verifies tail-term recall.

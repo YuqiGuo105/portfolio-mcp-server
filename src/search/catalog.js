@@ -1,5 +1,6 @@
 import { createSearchEngine } from './engine.js';
 import { plainText } from '../content-format.js';
+import { recordPhase } from '../tool-timings.js';
 
 export const SEARCH_TYPES = ['BLOG', 'PROJECT', 'LIFE_BLOG', 'EXPERIENCE'];
 const paths = { BLOG: 'blog-single', PROJECT: 'work-single', LIFE_BLOG: 'life-blog' };
@@ -32,11 +33,15 @@ export function createCatalog({ invoke, model, now = Date.now, ttlMs = 60_000 })
   let expiresAt = 0;
   let pending;
   let retryAt = 0;
+  let generation = 0;
   const ttl = Math.min(300_000, Math.max(1000, ttlMs));
   async function refresh() {
-    const docs = [];
+    const refreshGeneration = generation;
+    const startedAt = performance.now();
     const deadline = Date.now() + 12000;
-    for (const sourceType of SEARCH_TYPES) {
+    // Exactly four bounded reads, shared by all concurrent callers. Await every
+    // outcome so failed refreshes cannot leave background work after a response.
+    const responses = await Promise.allSettled(SEARCH_TYPES.map(async sourceType => {
       const remaining = deadline - Date.now();
       if (remaining <= 0) throw new Error('Search catalog refresh timed out');
       const response = await invoke('admin.search_content', { sourceType, limit: 50 }, undefined, { timeoutMs: Math.min(8000, remaining) });
@@ -44,23 +49,40 @@ export function createCatalog({ invoke, model, now = Date.now, ttlMs = 60_000 })
       if (!Array.isArray(items)) throw new Error('Search catalog response unavailable');
       // Never silently claim a complete index when an upstream page is truncated.
       if (items.length >= 50) throw new Error('Search catalog requires paginated indexing');
-      docs.push(...items.map(searchDocument).filter(Boolean));
-    }
+      return items.map(searchDocument).filter(Boolean);
+    }));
+    const failed = responses.find(response => response.status === 'rejected');
+    if (failed) throw failed.reason;
+    if (generation !== refreshGeneration) throw new Error('Search catalog invalidated during refresh');
+    const docs = responses.flatMap(response => response.value);
+    const buildStartedAt = performance.now();
     const next = createSearchEngine(docs, model);
+    recordPhase('index_build', buildStartedAt, { documents: docs.length });
+    recordPhase('catalog_refresh', startedAt, { documents: docs.length });
     snapshot = next;
     expiresAt = now() + ttl;
     return next;
   }
   return {
-    invalidate() { snapshot = undefined; expiresAt = 0; retryAt = 0; },
+    invalidate() { generation++; snapshot = undefined; expiresAt = 0; retryAt = 0; },
     async get() {
-      if (snapshot && now() < expiresAt) return snapshot;
+      const startedAt = performance.now();
+      if (snapshot && now() < expiresAt) {
+        recordPhase('catalog', startedAt, { cache: 'hit' });
+        return snapshot;
+      }
+      const cache = pending ? 'coalesced' : 'miss';
       if (!pending) {
         if (now() < retryAt) throw new Error('Search temporarily unavailable');
-        pending = refresh().catch(error => { retryAt = now() + 10_000; throw error; }).finally(() => { pending = undefined; });
+        const refreshGeneration = generation;
+        pending = refresh().catch(error => {
+          if (generation === refreshGeneration) retryAt = now() + 10_000;
+          throw error;
+        }).finally(() => { pending = undefined; });
       }
       // Do not serve stale access metadata after the TTL on a failed refresh.
-      return pending;
+      try { return await pending; }
+      finally { recordPhase('catalog', startedAt, { cache }); }
     },
   };
 }

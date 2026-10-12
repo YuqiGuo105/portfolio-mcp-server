@@ -4,6 +4,8 @@
  * by the MCP endpoint before this client is invoked.
  */
 
+import { recordPhase } from './tool-timings.js';
+
 const GATEWAY_URL = (process.env.MCP_GATEWAY_URL || 'https://portfolio-mcp-gateway-702193211434.us-central1.run.app').replace(/\/+$/, '');
 const GATEWAY_TOKEN = process.env.MCP_GATEWAY_INTERNAL_TOKEN || '';
 const DEFAULT_TIMEOUT_MS = 40_000;
@@ -14,6 +16,7 @@ export class GatewayError extends Error {
 }
 
 export async function invokeGatewayTool(toolName, args, context, options = {}) {
+  const startedAt = performance.now();
   const url = `${GATEWAY_URL}${options.endpointPath || `/api/tools/${encodeURIComponent(toolName)}/invoke`}`;
   const timeoutMs = options.timeoutMs || gatewayTimeoutForTool(toolName);
   const fetchImpl = options.fetchImpl || fetch;
@@ -61,6 +64,7 @@ export async function invokeGatewayTool(toolName, args, context, options = {}) {
     throw error;
   } finally {
     clearTimeout(timer);
+    recordPhase('gateway', startedAt, { toolName });
   }
 }
 

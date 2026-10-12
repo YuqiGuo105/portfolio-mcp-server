@@ -89,7 +89,45 @@ test('catalog refresh is single-flight, bounded and does not serve stale permiss
   now = 1001; unavailable = true;
   await assert.rejects(catalog.get(), /unavailable/);
   await assert.rejects(catalog.get(), /unavailable/);
-  assert.equal(calls, 5);
+  assert.equal(calls, 8, 'a failed parallel refresh is not retried during backoff');
+});
+
+test('catalog overlaps only four reads and coalesces concurrent callers', async () => {
+  const waiting = [];
+  const catalog = createCatalog({ invoke: (_, args) => new Promise(resolve => waiting.push(() =>
+    resolve({ items: corpus.filter(item => item.sourceType === args.sourceType) }))) });
+  const calls = Array.from({ length: 20 }, () => catalog.get());
+  assert.equal(waiting.length, 4, 'all types start before any response, with no fan-out per caller');
+  waiting.forEach(resolve => resolve());
+  const results = await Promise.all(calls);
+  assert.ok(results.every(result => result === results[0]));
+});
+
+test('a failed refresh waits for in-flight reads and never publishes a partial index', async () => {
+  const waiting = [];
+  const catalog = createCatalog({ invoke: (_, args) => args.sourceType === 'BLOG'
+    ? Promise.reject(new Error('upstream failed'))
+    : new Promise(resolve => waiting.push(() => resolve({ items: [] }))) });
+  let settled = false;
+  const result = catalog.get().catch(error => { settled = true; return error; });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(settled, false);
+  waiting.forEach(resolve => resolve());
+  assert.match((await result).message, /upstream failed/);
+  await assert.rejects(catalog.get(), /unavailable/);
+});
+
+test('invalidation during refresh cannot republish the old access flags', async () => {
+  const waiting = [];
+  const catalog = createCatalog({ invoke: () => new Promise(resolve => waiting.push(resolve)) });
+  const old = catalog.get();
+  catalog.invalidate();
+  waiting.splice(0).forEach(resolve => resolve({ items: corpus }));
+  await assert.rejects(old, /invalidated/);
+  const fresh = catalog.get();
+  assert.equal(waiting.length, 4);
+  waiting.forEach(resolve => resolve({ items: [] }));
+  assert.equal((await fresh).size, 0);
 });
 
 test('truncated upstream pages are reported rather than silently hiding content', async () => {

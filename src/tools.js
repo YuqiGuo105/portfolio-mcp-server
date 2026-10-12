@@ -12,6 +12,9 @@ import { searchContent } from './search/service.js';
 import { storedMermaid, plainText } from './content-format.js';
 import { searchDocument } from './search/catalog.js';
 
+// Public reads fail within a short budget; write/career deadlines are unchanged.
+const invokePublicRead = (name, args) => invokeGatewayTool(name, args, undefined, { timeoutMs: 8000 });
+
 const contentIdSchema = z.union([z.string(), z.number()])
   .transform(String)
   .describe('Content UUID or legacy numeric ID');
@@ -42,8 +45,8 @@ export const tools = [
       let evidenceStatus = 'NOT_REQUESTED';
       if (result.total === 0 || result.results.some(item => item.sourceRequiresLogin)) {
         try {
-          knowledge = await invokeGatewayTool('portfolio.search_public_knowledge',
-            { query: args.query, limit: Math.min(limit, 6) }, undefined, { timeoutMs: 8000 });
+          knowledge = await invokePublicRead('portfolio.search_public_knowledge',
+            { query: args.query, limit: Math.min(limit, 6) });
           evidenceStatus = 'AVAILABLE';
         } catch (error) {
           if (!result.total) throw error;
@@ -73,7 +76,7 @@ export const tools = [
     handler: async args => {
       const size = args.page?.size ?? 20;
       const number = args.page?.number ?? 0;
-      const result = await invokeGatewayTool('admin.search_content', {
+      const result = await invokePublicRead('admin.search_content', {
         sourceType: args.sourceType ?? sourceType, limit: size, offset: number * size,
       });
       if (!Array.isArray(result?.items)) throw new Error('Content listing is temporarily unavailable.');
@@ -204,7 +207,7 @@ export const tools = [
       limit: z.number().int().min(1).max(8).optional(),
     },
     annotations: PUBLIC_ANNOTATIONS,
-    handler: async args => invokeGatewayTool('portfolio.search_public_knowledge', { query: args.query, limit: args.limit ?? 6 }),
+    handler: async args => invokePublicRead('portfolio.search_public_knowledge', { query: args.query, limit: args.limit ?? 6 }),
   },
 
   {
@@ -229,12 +232,14 @@ export const tools = [
     zodSchema: {},
     annotations: PUBLIC_ANNOTATIONS,
     handler: async () => {
-      const profile = await invokeGatewayTool('portfolio.get_public_profile', {});
       // Read all public experience records; job-title filtering is not a profile source.
-      const result = await invokeGatewayTool('admin.search_content', {
-        sourceType: 'EXPERIENCE',
-        limit: 50,
-      });
+      const responses = await Promise.allSettled([
+        invokePublicRead('portfolio.get_public_profile', {}),
+        invokePublicRead('admin.search_content', { sourceType: 'EXPERIENCE', limit: 50 }),
+      ]);
+      const failed = responses.find(response => response.status === 'rejected');
+      if (failed) throw failed.reason;
+      const [profile, result] = responses.map(response => response.value);
       const items = result?.items ?? result?.content ?? [];
       const socialProfiles = publicSocialProfiles();
       return { ...profile, ...sanitizeProfile({ ...profile, experience: items }),
@@ -260,7 +265,7 @@ function notFound() {
 
 async function readPublicContent(args) {
   try {
-    const result = await invokeGatewayTool('admin.get_content', args);
+    const result = await invokePublicRead('admin.get_content', args);
     const item = result?.content && typeof result.content === 'object' ? result.content : result;
     const status = String(item?.status ?? item?.raw?.status ?? '').toUpperCase();
     const visibility = String(item?.visibility ?? item?.raw?.visibility ?? '').toUpperCase();

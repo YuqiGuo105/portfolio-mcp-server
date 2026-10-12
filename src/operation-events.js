@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { toolPhases } from './tool-timings.js';
 
 const ADMIN_SERVICE_URL = (process.env.ADMIN_SERVICE_URL || '').replace(/\/+$/, '');
 const ADMIN_SERVICE_TOKEN = process.env.ADMIN_SERVICE_INTERNAL_TOKEN || '';
@@ -14,7 +15,18 @@ export function operationContext(req, actor = 'mcp-server:public') {
   return { traceId, correlationId, actor };
 }
 
-export async function recordToolCall({ context, toolName, status, durationMs, errorCode }) {
+export async function recordToolCall({ context, toolName, status, durationMs, errorCode, responseBytes }) {
+  if (!context?.actor || context.actor === 'mcp-server:public') {
+    // Cloud Run collects stdout during the request. No post-response network
+    // work or admin-service cold start is needed for public read telemetry.
+    console.log(JSON.stringify({ severity: status === 'failed' ? 'WARNING' : 'INFO',
+      event: 'mcp.public_tool', toolName, status, durationMs,
+      ...(Number.isFinite(responseBytes) ? { responseBytes } : {}),
+      ...(context?.traceId && /^[a-f0-9]{32}$/i.test(context.traceId) ? { traceId: context.traceId } : {}),
+      ...(errorCode ? { errorCode } : {}), phases: toolPhases() }));
+    return;
+  }
+  // Authenticated activity retains the existing central operation audit.
   if (!ADMIN_SERVICE_URL || !ADMIN_SERVICE_TOKEN) return;
   const eventId = randomUUID();
   const controller = new AbortController();

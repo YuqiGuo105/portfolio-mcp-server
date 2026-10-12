@@ -117,6 +117,7 @@ receipt fields: `operationId`, `status`, `retryable`, and `nextAction`.
 [Admin workspace](docs/ADMIN_WORKSPACE.md) &middot;
 [Recovery design](docs/DURABLE_OPERATIONS.md) &middot;
 [Connection diagnostics](docs/CONNECTION_DIAGNOSTICS.md) &middot;
+[Latency and cost](docs/PERFORMANCE.md) &middot;
 [Run and test locally](docs/DEVELOPMENT.md)
 
 [Edge source](src/index.js) &middot;

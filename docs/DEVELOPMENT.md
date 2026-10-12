@@ -1,6 +1,6 @@
 # Development
 
-Requires Node.js 20+ and npm. Meaningful tool calls also require access to the
+Requires Node.js 24+ and npm. Meaningful tool calls also require access to the
 internal gateway; this repository is not a standalone copy of all backend services.
 
 ```sh
@@ -25,8 +25,8 @@ the health endpoint and `/mcp` is the public MCP route. Never commit real secret
 | `MCP_GATEWAY_INTERNAL_TOKEN` | Server-to-gateway credential; never distribute to clients |
 | `PORT` | HTTP port, default `8080` |
 | `SITE_URL` | Canonical origin, default `https://www.yuqi.site` |
-| `GATEWAY_TIMEOUT_MS` | Default gateway deadline, `10000` ms |
-| `CAREER_GATEWAY_TIMEOUT_MS` | Career gateway deadline, `30000` ms |
+| `GATEWAY_TIMEOUT_MS` | Default gateway deadline, `40000` ms; public reads explicitly use `8000` ms |
+| `CAREER_GATEWAY_TIMEOUT_MS` | Career gateway deadline, `50000` ms |
 | `MAX_CONTENT_LENGTH` | Returned content bound, default `8000` |
 | `SUPABASE_AUTH_ISSUER` | Admin JWT issuer and asymmetric JWKS discovery |
 | `SUPABASE_JWT_SECRET` | Legacy HS256 verification, when that token format is used |

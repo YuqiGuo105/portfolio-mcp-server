@@ -62,6 +62,7 @@ const TOOL_INVOCATION_INSTRUCTIONS = [
   'If a callable is unavailable, refresh tool discovery and use the newly registered callable instead of retrying a guessed name.',
   'Prefer one search_portfolio call for cross-content discovery; search_projects and search_articles are compatible filtered alternatives, not mandatory additional steps.',
   'Use get_overview for a quick introduction, get_profile for live public education and work history, and match_role for source-linked evidence against job requirements.',
+  'Use get_architecture_evolution for dated design decisions, trade-offs and documented incidents. Cite its commit evidence; it is not a live operations check.',
   'Search includes short public excerpts; read a detail record only when the returned excerpt or approved evidence is insufficient. Related evidence does not establish every requirement. Never infer skills or years from a match alone.',
 ].join(' ');
 

@@ -29,9 +29,13 @@ knowledge and help authorized administrators operate the platform.
 
 ### Public content tools
 
-The public endpoint exposes 14 read-only tools, including connection diagnostics.
+The public endpoint exposes 15 read-only tools, including connection diagnostics.
 Start with `get_overview` for a maintained introduction, `search_portfolio` for
 source-linked excerpts, or `match_role` for evidence against up to eight job requirements.
+Use `get_architecture_evolution` for dated design decisions and documented incidents
+with commit evidence. It reads a cached public timeline, not private logs or live
+deployment status, and makes no model calls. Publish the website's
+`/api/architecture/evolution` endpoint before releasing this tool.
 `search_knowledge` combines semantic retrieval with lexical evidence; the older
 project/article searches remain filtered compatibility aliases.
 

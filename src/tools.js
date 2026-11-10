@@ -14,6 +14,7 @@ import { searchDocument } from './search/catalog.js';
 import { addSnippets, safeKnowledge, snippetEvidence, mergeEvidence } from './public-evidence.js';
 import { matchRole } from './role-match.js';
 import { overview } from './overview.js';
+import { getArchitectureEvolution } from './architecture-evolution.js';
 
 // Public reads fail within a short budget; write/career deadlines are unchanged.
 const invokePublicRead = (name, args) => invokeGatewayTool(name, args, undefined, { timeoutMs: 8000 });
@@ -30,6 +31,17 @@ const PUBLIC_ANNOTATIONS = {
 };
 
 export const tools = [
+  {
+    name: 'get_architecture_evolution',
+    description: 'Read the public architecture timeline: design decisions, trade-offs, documented incidents and fixes, with dated commit evidence. Use for why the platform changed; not private logs or live deployment status. No model call.',
+    zodSchema: {
+      milestoneId: z.string().regex(/^[a-z0-9-]{1,64}$/).optional(),
+      type: z.enum(['milestone', 'decision', 'incident']).optional(),
+      limit: z.number().int().min(1).max(20).optional(),
+    },
+    annotations: PUBLIC_ANNOTATIONS,
+    handler: getArchitectureEvolution,
+  },
   {
     name: 'get_overview',
     description: 'Start here for a 30-second introduction to Yuqi: maintained role, three representative projects, open-source contributions, and source links. No downstream request. Includes a review date; use get_profile for live work history.',

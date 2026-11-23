@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { SUPPORTED_PROTOCOL_VERSIONS } from '@modelcontextprotocol/sdk/types.js';
 import { discoverAuthorizationServerMetadata } from '@modelcontextprotocol/sdk/client/auth.js';
@@ -112,7 +112,15 @@ export async function diagnoseConnection(input, { surface = 'public', principal,
   add('catalog', !canInspect ? 'skip' : catalogAvailable ? 'pass' : 'fail', !canInspect ? 'catalog_not_inspected' : catalogAvailable ? 'catalog_ready' : 'catalog_unavailable',
     !canInspect ? 'Private tool discovery is withheld until authentication succeeds.' : catalogAvailable ? 'Inspecting this connection\'s current registered tools.' : 'The upstream tool catalog is unavailable. Do not treat missing tools as removed.',
     !canInspect ? '认证成功前不会检查或公开私有工具。' : catalogAvailable ? '正在使用此连接当前实际注册的工具。' : '上游工具目录不可用，不能据此认为工具已被删除。',
-    !catalogAvailable ? 'RETRY_DISCOVERY' : undefined, canInspect && catalogAvailable ? { registeredTools: entries.length } : undefined);
+    !catalogAvailable ? 'RETRY_DISCOVERY' : undefined, canInspect && catalogAvailable ? {
+      registeredTools: entries.length,
+      catalogRevision: createHash('sha256').update(JSON.stringify(entries.map(entry =>
+        [entry.name, schemaHash(publishedSchema(entry))]).sort((a, b) => a[0].localeCompare(b[0])))).digest('hex'),
+    } : undefined);
+  if (surface === 'admin' && principal?.role === 'ADMIN') add('media_upload', 'pass', 'browser_upload_available',
+    'For Introduction uploads, open https://www.yuqi.site/admin/media-intro and sign in with your authorized Google administrator account. Select a video and approve replacement there. Browser upload does not require the AI sandbox to read the file or reach object storage. Old client tool lists cannot be forcibly refreshed by this server.',
+    'Introduction 上传入口：https://www.yuqi.site/admin/media-intro 。使用已授权的 Google 管理员账号登录，选择文件并确认替换。由浏览器上传，不需要 AI 沙箱读取文件或访问存储。服务端无法强制刷新客户端缓存的旧工具列表。',
+    'OPEN_ADMIN_MEDIA', { uploadUrl: 'https://www.yuqi.site/admin/media-intro', requiresAdministrator: true, changesPerformed: false });
   if (client.protocolVersion) add('protocol', SUPPORTED_PROTOCOL_VERSIONS.includes(client.protocolVersion) ? 'pass' : 'fail',
     SUPPORTED_PROTOCOL_VERSIONS.includes(client.protocolVersion) ? 'protocol_supported' : 'protocol_unsupported',
     'Compared the client-reported protocol version with the installed SDK.', '已对比客户端提供的协议版本与当前 SDK 支持范围。',

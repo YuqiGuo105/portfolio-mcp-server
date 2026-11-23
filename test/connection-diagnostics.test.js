@@ -20,6 +20,22 @@ const metadata = { issuer: 'https://auth.example.test/auth/v1', authorization_en
   response_types_supported: ['code'], code_challenge_methods_supported: ['S256'] };
 const response = value => new Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json' } });
 
+test('existing connection check gives admins a browser fallback and stable catalog fingerprint', async t => {
+  const server = createServer(); t.after(() => server.close());
+  const options = { registry: registryFor(server), surface: 'admin', probe: async () => ({ status: 'pass' }),
+    principal: { role: 'ADMIN', expiresAt: Date.now() / 1000 + 3600 } };
+  const first = await diagnoseConnection({}, options);
+  const second = await diagnoseConnection({}, options);
+  const catalog = report => report.checks.find(check => check.id === 'catalog').evidence;
+  assert.match(catalog(first).catalogRevision, /^[a-f0-9]{64}$/);
+  assert.equal(catalog(first).catalogRevision, catalog(second).catalogRevision);
+  assert.equal(first.checks.find(check => check.id === 'media_upload').evidence.uploadUrl, 'https://www.yuqi.site/admin/media-intro');
+  for (const principal of [undefined, { ...options.principal, role: 'EDITOR' }]) {
+    const report = await diagnoseConnection({}, { ...options, principal });
+    assert.equal(report.checks.some(check => check.id === 'media_upload'), false);
+  }
+});
+
 test('public self-check finds stale display labels without revealing private tools', async t => {
   const client = await connect(t, createServer());
   const result = await client.callTool({ name: 'connection.check', arguments: { locale: 'zh',

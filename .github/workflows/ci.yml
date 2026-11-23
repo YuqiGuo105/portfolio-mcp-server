@@ -8,7 +8,8 @@ on:
 
 jobs:
   lint-and-check:
-    runs-on: ubuntu-latest
+    # Keep the runner compatible with the lockfile's Playwright browser dependencies.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 

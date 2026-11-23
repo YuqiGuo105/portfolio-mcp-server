@@ -7,6 +7,14 @@ import { buildVisibleToolIndex, searchToolIndex } from '../src/tool-discovery.js
 
 const catalog = [
   { name: 'media.get', mode: 'READ', parameters: [{ name: 'id', type: 'string', required: true }] },
+  { name: 'media.get_presentation', mode: 'READ', parameters: [{ name: 'placementKey', type: 'string', required: true }] },
+  { name: 'media.set_presentation', mode: 'WRITE', parameters: [
+    { name: 'placementKey', type: 'string', required: true }, { name: 'id', type: 'string', required: true },
+    { name: 'expectedRevision', type: 'string', required: true }, { name: 'chapters', type: 'array', required: false },
+  ] },
+  { name: 'media.disable_presentation', mode: 'WRITE', parameters: [
+    { name: 'placementKey', type: 'string', required: true }, { name: 'expectedRevision', type: 'string', required: true },
+  ] },
   { name: 'media.delete', mode: 'WRITE', parameters: [
     { name: 'id', type: 'string', required: true }, { name: 'expectedVersion', type: 'integer', required: true },
   ] },
@@ -41,7 +49,8 @@ test('public and lesser roles cannot discover or call media tools; admin writes 
       const names = (await client.listTools()).tools.map(tool => tool.name);
       assert.equal(names.includes('media.get'), role === 'ADMIN');
       assert.equal(names.includes('media.delete'), role === 'ADMIN');
-      for (const name of ['media.get_article', 'media.attach_to_article', 'media.detach_from_article'])
+      for (const name of ['media.get_article', 'media.attach_to_article', 'media.detach_from_article',
+        'media.get_presentation', 'media.set_presentation', 'media.disable_presentation'])
         assert.equal(names.includes(name), role === 'ADMIN');
       const read = await client.callTool({ name: 'media.get', arguments: { id: 'test-asset' } });
       assert.equal(read.isError === true, role !== 'ADMIN');
@@ -94,4 +103,33 @@ test('Chinese video intent discovers the admin media namespace', () => {
   const index = buildVisibleToolIndex(catalog);
   const result = searchToolIndex(index, { query: '删除视频', mode: 'WRITE' }, 'recommend');
   assert.equal(result.matches[0].name, 'media.delete');
+});
+
+test('homepage placement tools forward revision and chapters only after explicit confirmation', async t => {
+  const originalFetch = globalThis.fetch;
+  t.after(() => { globalThis.fetch = originalFetch; });
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, body: JSON.parse(options.body) });
+    assert.equal(options.headers['X-Role'], 'ADMIN');
+    return new Response(JSON.stringify({ enabled: true }), { status: 200 });
+  };
+  const server = await createAdminServer({ email: 'operator@example.com', role: 'ADMIN', owner: false }, async () => catalog);
+  const [a, b] = InMemoryTransport.createLinkedPair();
+  const client = new Client({ name: 'intro-media-test', version: '1.0.0' });
+  await Promise.all([server.connect(b), client.connect(a)]);
+  try {
+    const args = { placementKey: 'yuqi-intro', id: '00000000-0000-4000-8000-000000000001',
+      expectedRevision: 'a'.repeat(64), chapters: [{ seconds: 0, title: 'Welcome' }] };
+    assert.equal((await client.callTool({ name: 'media.set_presentation', arguments: args })).isError, true);
+    assert.equal((await client.callTool({ name: 'media.set_presentation', arguments: { ...args, _confirmed: true } })).isError, true);
+    assert.notEqual((await client.callTool({ name: 'media.set_presentation', arguments: { ...args,
+      _confirmed: true, _idempotencyKey: 'intro-replace-001' } })).isError, true);
+    assert.equal(calls.length, 1);
+    assert.match(calls[0].url, /media\.set_presentation\/invoke$/);
+    assert.ok(JSON.stringify(calls[0].body).includes(args.expectedRevision));
+    assert.ok(JSON.stringify(calls[0].body).includes('Welcome'));
+    const discovered = searchToolIndex(buildVisibleToolIndex(catalog), { query: '替换首页介绍视频', mode: 'WRITE' }, 'recommend');
+    assert.equal(discovered.matches[0].name, 'media.set_presentation');
+  } finally { await client.close(); await server.close(); }
 });

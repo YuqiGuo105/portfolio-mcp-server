@@ -27,6 +27,8 @@ const INTENT_ALIASES = Object.freeze({
   health: ['diagnostics', 'platform', 'status'],
   video: ['media', 'upload', 'transcode', 'playback'],
   media: ['video', 'image', 'upload', 'transcode'],
+  introduction: ['presentation', 'homepage', 'media'],
+  homepage: ['presentation', 'introduction'],
 });
 
 const PHRASE_ALIASES = Object.freeze({
@@ -46,6 +48,9 @@ const PHRASE_ALIASES = Object.freeze({
   '媒体': ['media', 'video', 'image'],
   '上传': ['upload', 'media', 'create'],
   '转码': ['transcode', 'media', 'processing'],
+  '首页': ['homepage', 'presentation', 'introduction'],
+  '介绍视频': ['introduction', 'presentation'],
+  '替换': ['set', 'update'],
   '删除': ['delete'],
   '改名': ['update', 'title'],
 });

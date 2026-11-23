@@ -20,9 +20,10 @@ const names = [
   'media.resume_upload', 'media.complete_upload', 'media.update', 'media.check_delete',
   'media.delete', 'media.retry_processing', 'media.get_article',
   'media.attach_to_article', 'media.detach_from_article',
+  'media.get_presentation', 'media.set_presentation', 'media.disable_presentation',
 ];
 const reads = new Set(['media.list', 'media.get', 'media.get_upload_limits',
-  'media.check_delete', 'media.get_article']);
+  'media.check_delete', 'media.get_article', 'media.get_presentation']);
 
 async function request(base, path, options = {}, expected = 200) {
   const response = await fetch(new URL(path, base), {
@@ -45,6 +46,7 @@ async function invoke(name, args = {}, role = 'ADMIN', expected = 200) {
 const client = new Client({ name: 'media-release-readonly-verification', version: '1.0.0' });
 try {
   await request(admin, '/api/admin/media', {}, 401);
+  await request(admin, '/api/admin/media/presentations/yuqi-intro', {}, 401);
   await request(gateway, '/api/tools', {}, 401);
   await request(endpoint, '/mcp/admin', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -62,10 +64,11 @@ try {
     assert.equal(tool.mode, reads.has(name) ? 'READ' : 'WRITE');
     if (!reads.has(name)) assert.equal(tool.confirmRequired, true);
   }
-  console.log('PASS all 13 media tools deployed with ADMIN and confirmation policies');
+  console.log('PASS all 16 media tools deployed with ADMIN and confirmation policies');
 
   for (const role of ['VIEWER', 'EDITOR', 'PUBLISHER']) {
     await invoke('media.list', { limit: 1 }, role, 403);
+    await invoke('media.get_presentation', { placementKey: 'yuqi-intro' }, role, 403);
   }
   console.log('PASS lesser roles cannot invoke media tools');
 
@@ -78,6 +81,11 @@ try {
   assert.ok(Number.isInteger(asset.metadataVersion) && asset.manifest);
   await invoke('media.check_delete', { id: asset.id });
   console.log('PASS administrator limits, list, detail and deletion preflight');
+  const placement = await invoke('media.get_presentation', { placementKey: 'yuqi-intro' });
+  assert.equal(placement.placementKey, 'yuqi-intro');
+  assert.match(placement.revision, /^[a-f0-9]{64}$/);
+  assert.equal(typeof placement.enabled, 'boolean');
+  console.log('PASS administrator homepage placement read and concurrency revision');
 
   if (process.env.MEDIA_VERIFY_PROJECT_ID) {
     const article = await invoke('media.get_article', {

@@ -13,6 +13,7 @@ the media HTTP API also enforce authorization independently.
 | Check references / logically delete | `media.check_delete`, `media.delete` |
 | Retry failed processing | `media.retry_processing` |
 | Article video references | `media.get_article`, `media.attach_to_article`, `media.detach_from_article` |
+| Homepage Introduction | `media.get_presentation`, `media.set_presentation`, `media.disable_presentation` |
 
 All writes require explicit user approval (`_confirmed: true`) and a stable
 `_idempotencyKey` (8-200 characters). Retries of the same action use the same key
@@ -36,6 +37,41 @@ Signed PUT URLs are short-lived capabilities. Never expose them in prose or
 logs. Durable operation receipts retain upload identifiers, not the signed
 URLs. After a successful replay, use `media.resume_upload` with a fresh key to
 renew URLs for the same unfinished upload; do not start another upload.
+
+If the client's network policy denies the signed storage domain, stop and ask
+for that domain to be authorized, or hand the upload to the authorized admin
+uploader. A signed URL grants storage authorization; it cannot override the AI
+client's own network policy. Do not invent a proxy, fetch private originals, or
+report an upload as completed without sending the bytes and completing it.
+
+## Homepage Introduction
+
+The homepage is a named placement, not an article. It now uses the same uploaded
+READY video assets; no Mac-only publishing script or additional credentials are
+needed. The existing MP4 presentation remains compatible until explicitly replaced.
+
+1. Upload and complete the file as above; wait for `media.get` to report `READY`.
+2. Read `media.get_presentation` with `placementKey: "yuqi-intro"`.
+3. After the user approves the replacement, call `media.set_presentation` with
+   the same placement key, the READY video UUID as `id`, and `expectedRevision`
+   from the read. Include `_confirmed: true` and a unique `_idempotencyKey`.
+   Optional `title` is 1-300 characters. Optional `chapters` is an array of up to
+   30 `{seconds, title}` entries, strictly increasing within the video duration.
+   Omission clears chapters rather than copying old timestamps to a different video.
+4. Re-read the placement to verify the saved asset and revision, then check the
+   homepage after ISR refresh (300-second revalidation interval; refresh occurs
+   on a subsequent request). A successful write is not proof of public playback.
+
+Only processed HLS, poster and rendition paths are used. The short preview MP4
+is never substituted for the full introduction. The player loads HLS only when
+opened, supports Auto/manual quality and stops on close. This operation does not
+edit articles, send subscriber notifications or start another transcode.
+
+To hide the entrance, read the current revision and explicitly confirm
+`media.disable_presentation`. This preserves the asset, files and audit history.
+To restore it, re-read and set the approved asset again. A stale revision rejects
+the write; do not overwrite a newer placement by automatically obtaining a new
+revision. Concurrent initial creation is also protected.
 
 ## Article publishing
 
@@ -93,10 +129,12 @@ retain the existing durable MCP operation receipts.
 
 ## Release and verification
 
-Release order: admin-service with Flyway `V15__media_management.sql`, then the
-gateway catalog, then this MCP edge. Do not expose the catalog before its API
-exists. No new credentials, model calls, background polling, or frontend bundle
-are introduced. Upload/retry use the existing storage and transcode limits and
+Release order for homepage placements: deploy the compatible frontend player,
+then admin-service, then the gateway catalog and MCP edge. The existing media
+schema (through `V15__media_management.sql`) is reused without a new migration.
+Do not expose the catalog before its API exists. No new credentials, model calls,
+or background polling are introduced; HLS uses the already-installed lazy runtime.
+Upload/retry use the existing storage and transcode limits and
 still incur their normal costs; logical deletion does not reduce storage costs.
 
 Local coverage includes real PostgreSQL migrations, authenticated HTTP metadata
@@ -106,11 +144,20 @@ for unready video, durable receipt redaction/replay, gateway argument/role/confi
 checks, and MCP protocol visibility/call tests for public and managed roles.
 These checks do not claim a production MCP upload or cloud deletion test.
 
+The opt-in Java `media-e2e` test also binds its real uploaded/transcoded video to
+`yuqi-intro` through authenticated HTTP and exports the database presentation row.
+The frontend's development-only `/admin/media-placement-preview` reads that row
+from `MEDIA_E2E_OUTPUT`. Serve its exported `media/` directory locally to exercise
+the actual introduction modal, HLS Auto/manual quality, pause/seek preservation
+and close cleanup. The route is always 404 in production and on Vercel. Do not
+commit exported fixtures or local filesystem symlinks.
+
 `node scripts/verify-admin-media.mjs` performs read-only deployed checks using
 server-side `MCP_GATEWAY_URL`, `MCP_GATEWAY_INTERNAL_TOKEN`, `ADMIN_SERVICE_URL`
 and `PUBLIC_MCP_URL`. Optionally supply `MEDIA_VERIFY_PROJECT_ID` to inspect an
 existing project's media references. It checks anonymous rejection at all three
-layers, all 13 catalog contracts, lesser-role denial, actual ADMIN reads and the
+layers, all 16 catalog contracts, lesser-role denial, actual ADMIN reads (including
+the current homepage placement without changing it), and the
 public MCP catalog. Supply secrets in the process environment, never command-line
 arguments or Git. The script does not print asset data or credentials and does
 not upload, mutate, delete or publish anything.

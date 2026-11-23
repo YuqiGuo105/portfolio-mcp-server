@@ -25,6 +25,8 @@ const INTENT_ALIASES = Object.freeze({
   alert: ['rule', 'incident', 'notification'],
   cost: ['budget', 'quota', 'spend'],
   health: ['diagnostics', 'platform', 'status'],
+  video: ['media', 'upload', 'transcode', 'playback'],
+  media: ['video', 'image', 'upload', 'transcode'],
 });
 
 const PHRASE_ALIASES = Object.freeze({
@@ -40,6 +42,12 @@ const PHRASE_ALIASES = Object.freeze({
   '告警': ['alert', 'rule', 'incident'],
   '成本': ['cost', 'budget', 'quota'],
   '诊断': ['diagnostics', 'health', 'status'],
+  '视频': ['video', 'media'],
+  '媒体': ['media', 'video', 'image'],
+  '上传': ['upload', 'media', 'create'],
+  '转码': ['transcode', 'media', 'processing'],
+  '删除': ['delete'],
+  '改名': ['update', 'title'],
 });
 
 export function createDiscoveryTools(visibleTools) {

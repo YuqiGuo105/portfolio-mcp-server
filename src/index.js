@@ -118,7 +118,7 @@ export async function createAdminServer(authContext, catalogLoader = loadToolCat
   const srv = new McpServer({
     name: 'yuqi-portfolio-admin',
     version: SERVER_VERSION,
-    description: "Yuqi Guo's Portfolio Admin — manage alert rules (authenticated)",
+    description: "Yuqi Guo's Portfolio Admin — manage content, media and operations (authenticated)",
   }, {
     instructions: TOOL_INVOCATION_INSTRUCTIONS,
   });

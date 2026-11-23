@@ -124,6 +124,7 @@ receipt fields: `operationId`, `status`, `retryable`, and `nextAction`.
 
 [Client setup](docs/CLIENT_INTEGRATIONS.md) &middot;
 [Admin workspace](docs/ADMIN_WORKSPACE.md) &middot;
+[Admin media](docs/ADMIN_MEDIA.md) &middot;
 [Recovery design](docs/DURABLE_OPERATIONS.md) &middot;
 [Connection diagnostics](docs/CONNECTION_DIAGNOSTICS.md) &middot;
 [Latency and cost](docs/PERFORMANCE.md) &middot;

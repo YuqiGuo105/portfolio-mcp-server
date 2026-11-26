@@ -15,6 +15,7 @@ import { addSnippets, safeKnowledge, snippetEvidence, mergeEvidence } from './pu
 import { matchRole } from './role-match.js';
 import { overview } from './overview.js';
 import { getArchitectureEvolution } from './architecture-evolution.js';
+import { getSiteGuide } from './site-guide.js';
 
 // Public reads fail within a short budget; write/career deadlines are unchanged.
 const invokePublicRead = (name, args) => invokeGatewayTool(name, args, undefined, { timeoutMs: 8000 });
@@ -41,6 +42,16 @@ export const tools = [
     },
     annotations: PUBLIC_ANNOTATIONS,
     handler: getArchitectureEvolution,
+  },
+  {
+    name: 'get_site_guide',
+    description: 'Read the public map of yuqi.site: its sections, what each one shows and a direct link to it. Use to tell a visitor where something is, or to take them there; pass topic (for example "education" or "联系方式") for the matching section. A map only: use get_profile or search_portfolio for the facts themselves. Cached; no model call.',
+    zodSchema: {
+      topic: z.string().trim().min(1).max(120).optional().describe('What the visitor wants to see, in a word or two, in any language'),
+      limit: z.number().int().min(1).max(20).optional(),
+    },
+    annotations: PUBLIC_ANNOTATIONS,
+    handler: getSiteGuide,
   },
   {
     name: 'get_overview',
